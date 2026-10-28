@@ -70,7 +70,7 @@ Qualquer cor nova precisa passar no mesmo cálculo antes de entrar.
 No MVP, a cor por nota é "could" (T55); até lá, o app usa o padrão do tema.
 
 ## Tipografia
-- **Inter** (SIL Open Font License 1.1), arquivo variável `.woff2` embutido em `src/assets/fonts/` via `@font-face`. Fallback: `"Segoe UI", system-ui, sans-serif`.
+- **Inter** (SIL Open Font License 1.1), versão variável via pacote `@fontsource-variable/inter` (o Vite embute o arquivo no build; nada é baixado em runtime). Fallback: `"Segoe UI", system-ui, sans-serif`.
 - Editor: monoespaçada **não**; o texto da nota usa Inter.
 
 | Token | Tamanho | Peso | Altura de linha | Uso |
