@@ -67,21 +67,21 @@ App desktop para Windows que mostra um post-it digital flutuante com um atalho g
 
 ## 6. Arquitetura
 ```
-┌──────────────────────── Processo AnoteAki (Tauri) ────────────────────────┐
-│                                                                            │
-│  WebView2 (src/, TS puro)                 Rust core (src-tauri/)            │
-│  ┌──────────────────────┐   invoke    ┌──────────────────────────────────┐ │
-│  │ views/note.ts        │ ──────────► │ commands/notes.rs                 │ │
-│  │ views/history.ts     │             │ commands/settings.rs              │ │
-│  │ views/settings.ts    │ ◄────────── │ commands/window.rs                │ │
-│  │ lib/api.ts (tipado)  │   eventos   │        │                          │ │
-│  │ lib/debounce.ts      │             │        ▼                          │ │
-│  │ styles/tokens.css    │             │ db/ (rusqlite, migrações, FTS5)   │ │
-│  └──────────────────────┘             │ shortcut.rs  tray.rs  app.rs      │ │
-│                                       └───────┬──────────────────────────┘ │
-└───────────────────────────────────────────────┼────────────────────────────┘
+┌─────────────────────────── Processo AnoteAki (Tauri) ────────────────────────────┐
+│                                                                                   │
+│  frontend/ (WebView2, TS puro)              backend/ (Rust core)                  │
+│  src/                                       src/                                  │
+│  ├─ main.ts        (troca de telas)  invoke  ├─ commands/ notes.rs settings.rs     │
+│  ├─ screens/       Note, History,   ───────► │             window.rs              │
+│  │                 Settings                  ├─ db/ (rusqlite, migrações, FTS5)    │
+│  ├─ components/    NoteEditor, NoteList, ◄── ├─ shortcut.rs  tray.rs              │
+│  │                 SearchBox, IconButton, eventos  settings.rs  error.rs           │
+│  │                 Toast, ShortcutCapture    └─ lib.rs / main.rs                   │
+│  ├─ lib/           api.ts (tipado), debounce.ts, dates.ts                         │
+│  └─ styles/        tokens.css, base.css                                           │
+└───────────────────────────────────────────────┬───────────────────────────────────┘
                                                 ▼
-                         %APPDATA%\com.anoteaki.desktop\anoteaki.db
+                         %APPDATA%com.anoteaki.desktopanoteaki.db
 Plugins: global-shortcut (Rust) · autostart · single-instance · tray nativo
 ```
 - Estado compartilhado: `tauri::State<Mutex<rusqlite::Connection>>` (uma conexão, acesso serializado; volume baixo).
@@ -138,13 +138,13 @@ Nenhuma no MVP. Anki, Obsidian e Notion estão descritos em `MVP-SCOPE.md` como 
 ## 10. Riscos técnicos e como medir
 | ID | Risco | Como medir / mitigar |
 |---|---|---|
-| R1 | Windows não entrega o foco à janela (restrição de foreground) | 20 aberturas sobre navegador, VS Code, Explorer e terminal; contar quantas vezes o texto cai no editor. A pesquisa do agy no T00 levanta as soluções conhecidas. |
+| R1 | Windows não entrega o foco à janela (restrição de foreground) | 20 aberturas sobre navegador, VS Code, Explorer e terminal; contar quantas vezes o texto cai no editor. Sequência: `unminimize → show → set_focus → emit("window-shown")` no Rust + foco do textarea com `requestAnimationFrame` na UI. |
 | R2 | Latência entre atalho e janela | Em build de debug: `Instant` no handler do atalho até depois do `set_focus` (log só com ms, sem conteúdo) + `performance.now()` no `window-shown`. 20 amostras; registrar a mediana e o p95. |
 | R3 | Memória em repouso | Depois de 5 min oculta: soma do working set do AnoteAki + processos `msedgewebview2` filhos (Gerenciador de Tarefas / `Get-Process`). Registrar. |
 | R4 | Transparência/sombra/cantos falham no Windows 11 | Protótipo no T10; se falhar, usar o plano B (opaca). |
 | R5 | Conflito de atalho / AltGr | Testar o registro com o atalho já em uso e digitar caracteres AltGr no ABNT2 (T11). |
 | R6 | Perda de dados | Matar o processo 1 s depois de digitar (Gerenciador de Tarefas) em 10 tentativas; conferir o texto. |
-| R7 | FTS5 indisponível no `bundled` | Verificar no T00 (`PRAGMA compile_options` / teste criando a tabela fts5). |
+| R7 | FTS5 indisponível no `bundled` | O `libsqlite3-sys` com `bundled` compila com `SQLITE_ENABLE_FTS5`; o T20 tem um teste que cria a tabela fts5 e busca "acao" → "ação". |
 | R8 | Aviso do SmartScreen no instalador sem assinatura | Instalar em um usuário/VM limpo (T90) e registrar o que aparece. |
 
 ## 11. Decisões em aberto
@@ -159,7 +159,7 @@ Nenhuma no MVP. Anki, Obsidian e Notion estão descritos em `MVP-SCOPE.md` como 
 
 ## 12. Contrato de comandos (front ↔ back)
 
-Fonte única da comunicação entre UI (`src/`, Claude) e Rust (`src-tauri/`, Codex). **Mudanças só pelo orquestrador**, antes de qualquer código.
+Fonte única da comunicação entre UI (`frontend/`, Claude) e Rust (`backend/`, Codex). **Mudanças só pelo orquestrador**, antes de qualquer código.
 ### Convenções
 - O front chama `invoke<T>("nome_do_comando", { ...args })`; os nomes dos comandos estão em `snake_case`.
 - Os campos JSON estão em `camelCase` (`#[serde(rename_all = "camelCase")]` no Rust).

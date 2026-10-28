@@ -11,12 +11,12 @@ App desktop (Windows) de notas rápidas: um atalho global abre uma janela flutua
 - Os exercícios listados no fim de `docs/TASKS.md` são **do usuário**: não os resolva, apenas revise quando ele pedir.
 
 ## Stack e pastas
-Tauri 2 · Rust (rusqlite + FTS5, serde) · TypeScript/HTML/CSS puro + Vite · Vitest · Biome · GitHub Actions. Pré-requisitos: Windows 11, Rust ≥ 1.90 (MSVC), Node LTS.
+Tauri 2 · Rust (rusqlite + FTS5, serde) · TypeScript/HTML/CSS puro + Vite · Vitest · Biome · GitHub Actions. Pré-requisitos: Windows 11, Rust ≥ 1.90 (MSVC), Node 24 LTS.
 
 | Pasta | Dono |
 |---|---|
-| `src-tauri/` (Rust, `tauri.conf.json`, `capabilities/`) | **Codex** |
-| `src/` (UI: TS, HTML, CSS, assets) | **Claude** |
+| `backend/` (Rust, `tauri.conf.json`, `capabilities/`) | **Codex** |
+| `frontend/` (UI: TS, HTML, CSS, assets, `package.json`) | **Claude** |
 | `docs/`, `AGENTS.md` | **Orquestrador** |
 | Pesquisa/verificação (sem código de produção) | **agy** (Antigravity) |
 
@@ -27,17 +27,22 @@ Tauri 2 · Rust (rusqlite + FTS5, serde) · TypeScript/HTML/CSS puro + Vite · V
 - Código, nomes de arquivos, branches e commits em inglês; docs e comentários de domínio em PT-BR.
 - Rust: `snake_case`, erros via enum `AppError` (ver contrato), sem `unwrap()` fora de testes.
 - TS: `strict`, `camelCase`, sem `any`, sem framework de UI.
+- **Componentes (frontend):** um componente por arquivo em `frontend/src/components/` (`PascalCase.ts` + `PascalCase.css` ao lado). Assinatura: `createX(props): { el: HTMLElement; update(props): void; destroy(): void }`. Telas em `src/screens/` só compõem componentes; chamadas ao Rust só via `src/lib/api.ts`.
+- **Dependências (modelo AnyCaptions):** versões exatas fixadas; `tauri` com `default-features = false` + só as features usadas; `edition = "2024"`, `rust-version = "1.90"`; `engines.node` `^24.15.0 || >=26.0.0`; comentário no `Cargo.toml` justificando cada crate.
+- **Capabilities:** uma permissão por comando do app (`allow-save-note`…), `"local": true`, nada de shell/fs/rede.
 - Branch: `feat/T21-note-commands` (ID da tarefa). Commits: Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
 
 ## Comandos
 ```
+cd frontend
 npm install            # dependências do front
 npm run tauri dev      # app em modo dev
 npm test               # Vitest
 npm run check          # Biome + tsc --noEmit
-cargo test  --manifest-path src-tauri/Cargo.toml
-cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
-cargo fmt   --manifest-path src-tauri/Cargo.toml --check
+cd ..
+cargo test  --manifest-path backend/Cargo.toml
+cargo clippy --manifest-path backend/Cargo.toml -- -D warnings
+cargo fmt   --manifest-path backend/Cargo.toml --check
 npm run tauri build    # instalador NSIS
 ```
 
