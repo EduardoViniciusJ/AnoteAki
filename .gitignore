@@ -1,0 +1,23 @@
+# Build / dependências
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+
+# Dados locais (notas!) e segredos
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.*
+
+# Configs locais de ferramentas / IA
+opencode.json
+.claude/settings.local.json
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+*.log
