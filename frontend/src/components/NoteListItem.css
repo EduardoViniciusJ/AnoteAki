@@ -34,11 +34,20 @@
   align-items: baseline;
 }
 
+.note-list-item__dot {
+  flex: none;
+  align-self: center;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+}
+
 .note-list-item__title {
   flex: 1;
   overflow: hidden;
   font-size: var(--text-sm);
-  font-weight: 500;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

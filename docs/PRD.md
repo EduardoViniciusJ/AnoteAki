@@ -171,12 +171,15 @@ Fonte única da comunicação entre UI (`frontend/`, Claude) e Rust (`backend/`,
 ### Tipos
 ```ts
 type StickerColor = "yellow" | "pink" | "blue" | "green" | "lilac" | "paper";
+type StickerOpacity = 100 | 85 | 70;  // opacidade do fundo do post-it, em %
 
 interface Note {
   id: number;
-  title: string;          // derivado no Rust: 1ª linha não vazia, trim, máx. 80 caracteres; "" se o corpo estiver vazio
+  title: string;          // derivado no Rust: o `heading` (trim, máx. 80) ou, se vazio, a 1ª linha não vazia do corpo; "" se ambos vazios
+  heading: string;        // título digitado pelo usuário (máx. 200); "" = título vem do corpo
   body: string;
-  color: StickerColor | null;  // null = cor padrão do tema (campo "could"; existe desde a v1)
+  color: StickerColor | null;  // null = amarelo
+  opacity: StickerOpacity;     // padrão 100
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;    // não nulo = na lixeira
@@ -185,10 +188,17 @@ interface Note {
 interface NoteSummary {
   id: number;
   title: string;
-  preview: string;        // corpo sem a 1ª linha, espaços colapsados, máx. 140 caracteres
+  preview: string;        // corpo (sem a 1ª linha quando não há heading), espaços colapsados, máx. 140 caracteres
   color: StickerColor | null;
   updatedAt: string;
   deletedAt: string | null;
+}
+
+// O que um post-it (janela) mostra. Cada janela é um post-it com label "note-N".
+interface WindowState {
+  noteId: number | null;  // null = post-it em branco, ainda não salvo
+  color: StickerColor;
+  opacity: StickerOpacity;
 }
 
 type Theme = "system" | "light" | "dark";
@@ -224,10 +234,10 @@ interface AppError { code: ErrorCode; message: string } // message NUNCA contém
 |---|---|---|---|
 | `get_last_note` | — | `Note \| null` | A nota **ativa** (`deletedAt` nulo) com maior `updatedAt`. `null` se não houver nenhuma. |
 | `get_note` | `{ id }` | `Note` | Inclui notas na lixeira. `NOT_FOUND` se não existir. |
-| `save_note` | `{ id: number \| null, body: string, color?: StickerColor \| null }` | `Note` | `id` nulo → cria (o front só chama com o corpo não vazio). `id` existente → atualiza o `body`, o `title` e o `updatedAt`. Salvar uma nota na lixeira → `INVALID_INPUT`. |
+| `save_note` | `{ id: number \| null, body: string, heading?: string, color?: StickerColor, opacity?: StickerOpacity }` | `Note` | `id` nulo → cria (o front só chama com título ou corpo não vazio) e liga a nota ao post-it que chamou, para ele voltar ao reiniciar. `id` existente → atualiza; campo ausente ou `null` mantém o valor atual. Sem mudança, o `updatedAt` não muda. Salvar uma nota na lixeira → `INVALID_INPUT`. |
 | `list_notes` | `{ scope: "active" \| "trash", limit?, offset? }` | `NoteSummary[]` | Ordem: `updatedAt` desc. `active` **exclui notas de corpo vazio**. |
 | `search_notes` | `{ query, limit? }` | `NoteSummary[]` | FTS5 em title+body, só ativas, ordem por relevância (`bm25`). Sem diferenciar acentos nem maiúsculas. Cada termo vira uma frase escapada entre aspas, com prefixo `*` no último (o usuário nunca injeta sintaxe FTS). |
-| `delete_note` | `{ id }` | `void` | Soft delete (`deletedAt = now`). |
+| `delete_note` | `{ id }` | `void` | Soft delete (`deletedAt = now`). Fecha o post-it dessa nota; se for o post-it que chamou, ele fica aberto, em branco. |
 | `restore_note` | `{ id }` | `Note` | `deletedAt = null`. |
 | `purge_note` | `{ id }` | `void` | Remoção definitiva; só para notas na lixeira (senão `INVALID_INPUT`). |
 
@@ -236,20 +246,26 @@ interface AppError { code: ErrorCode; message: string } // message NUNCA contém
 |---|---|---|---|
 | `get_settings` | — | `Settings` | Os valores ausentes no banco retornam o padrão. |
 | `set_setting` | `{ key: keyof Settings, value: string \| boolean }` | `Settings` | Valida o tipo por chave. `shortcut`: desregistra o antigo e registra o novo; se falhar, mantém o antigo e retorna `SHORTCUT_UNAVAILABLE`. `autostart`: ativa ou desativa via plugin. |
-| `hide_window` | — | `void` | Esconde a janela principal (usado pelo Esc). |
+| `hide_window` | — | `void` | Esconde **todos** os post-its (usado pelo Esc). |
+| `get_window_state` | — | `WindowState` | Nota, cor e opacidade do post-it que chamou. |
+| `open_note_window` | `{ noteId: number \| null }` | `void` | Abre um post-it ao lado do que chamou: `null` = em branco, com a próxima cor da rotação amarelo → rosa → azul → verde; um id = aquela nota (se já estiver aberta, só traz para frente). |
+| `close_note_window` | — | `void` | Fecha o post-it que chamou; a nota continua no histórico. |
 | `get_shortcut_status` | — | `{ shortcut: string, registered: boolean }` | Atalho atual e se o registro global deu certo. A UI consulta ao iniciar e mostra um aviso + link para Configurações se `registered = false`. Se o registro falhar na inicialização, o Rust também mostra a janela (senão o app ficaria inacessível). |
 
 ### Eventos (Rust → UI)
 | Evento | Payload | Quando |
 |---|---|---|
-| `window-shown` | `{ reason: "shortcut" \| "tray" \| "second-instance" }` | Logo depois de `show()` + `set_focus()`. A UI recarrega `get_last_note` (se estiver na tela Nota) e foca o editor. |
+| `window-shown` | `{ reason: "shortcut" \| "tray" \| "second-instance" }` | Só para o post-it que recebeu o foco, logo depois de `show()` + `set_focus()`. A UI foca o título (post-it vazio) ou o fim do texto. |
 
 Não há evento de falha do atalho na inicialização: um evento emitido antes de o `listen()` do JS ser registrado é descartado (condição de corrida observada no T11). Por isso o estado é consultado com `get_shortcut_status`.
 
 ### Comportamentos do lado do Rust (sem comando)
-- O atalho global alterna mostrar/esconder (registrado **no Rust**; o JS não tem permissão do plugin).
+- O atalho global mostra/esconde **todos** os post-its (registrado **no Rust**; o JS não tem permissão do plugin). Sem nenhum aberto, abre a última nota (ou um em branco).
+- Os post-its com nota ficam na tabela `open_windows` (posição e tamanho, salvos ao perder o foco e ao esconder) e voltam ao reiniciar. Um post-it em branco não é salvo.
+- Criar janela só em comando `async`: em comando síncrono o Windows trava (wry #583).
+- Fechar o último post-it não encerra o processo (`RunEvent::ExitRequested` sem código é cancelado); o atalho abre um novo.
 - `hideOnBlur = true` → evento `Focused(false)` da janela → `hide()`.
-- Fechar a janela (Alt+F4) **esconde**; só "Sair" na bandeja encerra o processo.
+- Fechar a janela (Alt+F4) **esconde todos**, como o Esc; só "Sair" na bandeja encerra o processo.
 
 ### Responsabilidade do front em relação a salvamento
 - Debounce de 500 ms depois da última tecla → `save_note`.

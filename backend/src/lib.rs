@@ -6,7 +6,10 @@ mod tray;
 mod window;
 
 use rusqlite::Connection;
-use tauri::{AppHandle, Manager, WindowEvent};
+use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
+
+use crate::db::Db;
+use crate::window::Windows;
 
 /// Opens the database in `%APPDATA%\com.anoteaki.desktop`. If it fails, the app still starts
 /// and note commands return `DB_ERROR`, which the UI shows (PRD §8).
@@ -26,22 +29,44 @@ pub fn run() -> tauri::Result<()> {
     tauri::Builder::default()
         .plugin(shortcut::plugin())
         .setup(|app| {
-            app.manage(db::Db::new(open_database(app.handle())));
-            shortcut::register(app.handle());
+            app.manage(Db::new(open_database(app.handle())));
+            app.manage(Windows::default());
+            let handle = app.handle();
+            if window::restore(handle, &handle.state::<Db>(), &handle.state::<Windows>()).is_err() {
+                eprintln!("AnoteAki: não foi possível reabrir as notas.");
+            }
+            shortcut::register(handle);
             Ok(())
         })
         .on_window_event(|window, event| {
-            // Alt+F4 / close only hides; the process lives until "Quit" in the tray (T40).
-            if let WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                if window.hide().is_err() {
-                    eprintln!("AnoteAki: não foi possível esconder a janela.");
+            let app = window.app_handle();
+            match event {
+                // Alt+F4 / close hides all sticky notes, like Esc; the process lives
+                // until "Quit" in the tray (T40).
+                WindowEvent::CloseRequested { api, .. } => {
+                    api.prevent_close();
+                    if window::hide_all(app, &app.state::<Db>()).is_err() {
+                        eprintln!("AnoteAki: não foi possível esconder as janelas.");
+                    }
                 }
+                WindowEvent::Focused(true) => {
+                    let _ = app.state::<Windows>().focused(window.label());
+                }
+                // Losing focus is the end of a drag or resize: save where the note is.
+                WindowEvent::Focused(false) => {
+                    if let Some(note) = app.get_webview_window(window.label()) {
+                        window::save_bounds(&app.state::<Db>(), &note);
+                    }
+                }
+                _ => {}
             }
         })
         .invoke_handler(tauri::generate_handler![
             commands::window::hide_window,
             commands::window::get_shortcut_status,
+            commands::window::get_window_state,
+            commands::window::open_note_window,
+            commands::window::close_note_window,
             commands::notes::get_last_note,
             commands::notes::get_note,
             commands::notes::save_note,
@@ -51,5 +76,16 @@ pub fn run() -> tauri::Result<()> {
             commands::notes::restore_note,
             commands::notes::purge_note,
         ])
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())?
+        .run(|_app, event| {
+            // Closing the last sticky note must not quit: the shortcut opens a new one.
+            // Only an explicit exit (code set, e.g. "Quit" in the tray, T40) ends the process.
+            if let RunEvent::ExitRequested {
+                code: None, api, ..
+            } = event
+            {
+                api.prevent_exit();
+            }
+        });
+    Ok(())
 }

@@ -1,41 +1,59 @@
 import type { Ref } from "react";
+import { ColorMenu } from "../components/ColorMenu";
 import { IconButton } from "../components/IconButton";
 import { NoteEditor } from "../components/NoteEditor";
 import { SaveStatus } from "../components/SaveStatus";
+import { TitleField } from "../components/TitleField";
 import { Toast } from "../components/Toast";
-import type { SaveStatus as Status } from "../lib/useNoteDraft";
+import type { Look, SaveStatus as Status } from "../lib/useNoteDraft";
 import "./NoteScreen.css";
 
 export interface NoteScreenProps {
+  heading: string;
+  onHeadingChange: (heading: string) => void;
   body: string;
   onBodyChange: (body: string) => void;
+  look: Look;
+  onLookChange: (look: Look) => void;
   status: Status;
   /** Note in the trash: read-only editor and a "Restaurar" action. */
   readOnly?: boolean;
   onRestore?: () => void;
-  /** `Esc` on the Note screen: hide the window. */
+  /** `Esc` on the Note screen: hide all sticky notes. */
   onEscape: () => void;
-  /** "+" or `Ctrl+N`. */
+  /** "+" or `Ctrl+N`: a new sticky note. */
   onNewNote: () => void;
+  /** "×" or `Ctrl+W`: close this sticky note. */
+  onClose: () => void;
   /** History button, `Ctrl+H` or `Ctrl+F`. */
   onOpenHistory: () => void;
+  /** Enter in the title: go to the text. */
+  onTitleSubmit: () => void;
   warning: string | null;
   onDismissWarning: () => void;
+  titleRef?: Ref<HTMLInputElement>;
   editorRef?: Ref<HTMLTextAreaElement>;
 }
 
-/** Screen 1 (DESIGN-GUIDELINES → Telas e teclado). */
+/** Screen 1 (DESIGN-GUIDELINES → Telas e teclado): one sticky note. */
 export function NoteScreen({
+  heading,
+  onHeadingChange,
   body,
   onBodyChange,
+  look,
+  onLookChange,
   status,
   readOnly = false,
   onRestore,
   onEscape,
   onNewNote,
+  onClose,
   onOpenHistory,
+  onTitleSubmit,
   warning,
   onDismissWarning,
+  titleRef,
   editorRef,
 }: NoteScreenProps) {
   return (
@@ -45,13 +63,18 @@ export function NoteScreen({
       onKeyDown={(event) => {
         if (event.defaultPrevented) return;
         const key = event.key.toLowerCase();
+        // Ctrl+Alt is AltGr on ABNT2 keyboards: it types characters, so it is not a shortcut.
+        const ctrl = event.ctrlKey && !event.altKey;
         if (event.key === "Escape") {
           event.preventDefault();
           onEscape();
-        } else if (event.ctrlKey && !event.altKey && key === "n") {
+        } else if (ctrl && key === "n") {
           event.preventDefault();
           onNewNote();
-        } else if (event.ctrlKey && !event.altKey && (key === "h" || key === "f")) {
+        } else if (ctrl && key === "w") {
+          event.preventDefault();
+          onClose();
+        } else if (ctrl && (key === "h" || key === "f")) {
           event.preventDefault();
           onOpenHistory();
         }
@@ -66,11 +89,20 @@ export function NoteScreen({
             </button>
           </span>
         )}
+        <ColorMenu look={look} onChange={onLookChange} disabled={readOnly} />
         <IconButton icon="plus" label="Nova nota (Ctrl+N)" onClick={onNewNote} />
         <IconButton icon="history" label="Histórico (Ctrl+H)" onClick={onOpenHistory} />
         {/* Disabled until the Settings screen (T52). */}
         <IconButton icon="settings" label="Configurações (Ctrl+,) — em breve" disabled />
+        <IconButton icon="close" label="Fechar post-it (Ctrl+W)" onClick={onClose} />
       </header>
+      <TitleField
+        ref={titleRef}
+        value={heading}
+        onChange={onHeadingChange}
+        onSubmit={onTitleSubmit}
+        readOnly={readOnly}
+      />
       <NoteEditor
         ref={editorRef}
         value={body}

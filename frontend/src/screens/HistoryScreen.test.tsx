@@ -133,8 +133,10 @@ describe("HistoryScreen", () => {
     vi.mocked(restoreNote).mockResolvedValue({
       id: 1,
       title: "Alfa",
+      heading: "",
       body: "Alfa",
       color: null,
+      opacity: 100,
       createdAt: "",
       updatedAt: "",
       deletedAt: null,
@@ -174,8 +176,10 @@ describe("HistoryScreen", () => {
     vi.mocked(restoreNote).mockResolvedValue({
       id: 5,
       title: "Velha",
+      heading: "",
       body: "Velha",
       color: null,
+      opacity: 100,
       createdAt: "",
       updatedAt: "",
       deletedAt: null,

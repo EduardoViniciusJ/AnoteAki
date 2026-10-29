@@ -1,4 +1,4 @@
-//! Global shortcut (Ctrl+Alt+K) that shows/hides the main window.
+//! Global shortcut (Ctrl+Alt+K) that shows/hides all sticky notes.
 //! Registered in Rust: the JS side gets no permission for the plugin.
 
 use serde::Serialize;
@@ -6,7 +6,8 @@ use tauri::plugin::TauriPlugin;
 use tauri::{AppHandle, Manager, Wry};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
-use crate::window::{self, MAIN, ShowReason};
+use crate::db::Db;
+use crate::window::{self, ShowReason, Windows};
 
 /// Contract default. Changing it from the Settings screen comes in T50.
 pub const DEFAULT_SHORTCUT: &str = "Ctrl+Alt+K";
@@ -17,8 +18,8 @@ pub enum Toggle {
     Hide,
 }
 
-/// Hide only when the window is visible **and** focused; if it is visible behind
-/// another window, the shortcut brings it to the front instead.
+/// Hide only when a sticky note is visible **and** focused; if they are visible behind
+/// another window, the shortcut brings them to the front instead.
 pub fn toggle_action(visible: bool, focused: bool) -> Toggle {
     if visible && focused {
         Toggle::Hide
@@ -39,18 +40,23 @@ pub fn plugin() -> TauriPlugin<Wry> {
 }
 
 fn toggle(app: &AppHandle) {
-    let Some(main) = app.get_webview_window(MAIN) else {
-        return;
-    };
-    let visible = main.is_visible().unwrap_or(false);
-    let focused = main.is_focused().unwrap_or(false);
+    let (visible, focused) = window::visibility(app);
     let result = match toggle_action(visible, focused) {
-        Toggle::Show => window::show(app, ShowReason::Shortcut),
-        Toggle::Hide => window::hide(app),
+        Toggle::Show => show(app),
+        Toggle::Hide => window::hide_all(app, &app.state::<Db>()).map_err(Into::into),
     };
     if result.is_err() {
-        eprintln!("AnoteAki: não foi possível alternar a janela.");
+        eprintln!("AnoteAki: não foi possível alternar as janelas.");
     }
+}
+
+fn show(app: &AppHandle) -> Result<(), crate::error::AppError> {
+    window::show_all(
+        app,
+        &app.state::<Db>(),
+        &app.state::<Windows>(),
+        ShowReason::Shortcut,
+    )
 }
 
 /// Result of `get_shortcut_status`. The UI asks for it on startup (an event emitted
@@ -62,7 +68,7 @@ pub struct ShortcutStatus {
 }
 
 /// Registers the default shortcut and stores the result in app state. If it fails
-/// (used by another app), shows the window: without a shortcut it would be
+/// (used by another app), shows the sticky notes: without a shortcut they would be
 /// unreachable (the tray only comes in T40).
 pub fn register(app: &AppHandle) {
     let registered = app.global_shortcut().register(DEFAULT_SHORTCUT).is_ok();
@@ -73,11 +79,7 @@ pub fn register(app: &AppHandle) {
     if registered {
         return;
     }
-    let shown = match app.get_webview_window(MAIN) {
-        Some(main) => window::focus(&main),
-        None => Ok(()),
-    };
-    if shown.is_err() {
+    if show(app).is_err() {
         eprintln!("AnoteAki: não foi possível mostrar a janela.");
     }
 }
