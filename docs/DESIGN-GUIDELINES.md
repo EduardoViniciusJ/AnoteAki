@@ -167,13 +167,13 @@ A animação de abrir **nunca** pode atrasar o foco do editor.
 
 ### Tela 3: Configurações
 **Objetivo:** ajustar o comportamento sem editar arquivos.
-- Seções em ordem: Aparência (tema: Sistema/Claro/Escuro) → Atalho (campo de captura + restaurar padrão) → Comportamento (esconder ao perder o foco; iniciar com o Windows) → Sobre (versão, link para a política de privacidade).
+- Seções em ordem: Aparência (tema: Sistema/Claro/Escuro) → Atalho (campo de captura + restaurar padrão) → Comportamento (esconder ao perder o foco) → Sobre (versão, link para a política de privacidade).
 - Cada mudança aplica na hora (`set_setting`), sem botão "Salvar".
 - Estados: erro de atalho indisponível no próprio campo.
 
 ### Menu da bandeja
 - Clique esquerdo: mostra todos os post-its (`window-shown` com `reason: "tray"`).
-- Menu do clique direito: **Abrir** · ☑ **Iniciar com o Windows** · separador · **Sair**.
+- Menu do clique direito: **Abrir** · separador · **Sair**. (Iniciar com o Windows fica no instalador e no Gerenciador de Tarefas.)
 - Tooltip: nome do app.
 
 ### Mapa de teclado

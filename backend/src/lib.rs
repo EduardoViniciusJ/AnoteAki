@@ -39,10 +39,6 @@ pub fn run() -> tauri::Result<()> {
                 eprintln!("AnoteAki: não foi possível mostrar as notas.");
             }
         }))
-        .plugin(tauri_plugin_autostart::init(
-            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            None,
-        ))
         .plugin(shortcut::plugin())
         .setup(|app| {
             app.manage(Db::new(open_database(app.handle())));

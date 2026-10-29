@@ -129,7 +129,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 
 ## Etapa 4: Bandeja e sistema (Fase 4)
 
-### [~] T40. Bandeja
+### [x] T40. Bandeja
 - **Objetivo:** ícone com Abrir e Sair; o app vive na bandeja.
 - **Agente:** Claude · **Pastas:** `backend/`
 - **Depende de:** T11
@@ -149,7 +149,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 - **Objetivo:** atalho disponível logo após o login.
 - **Agente:** Claude · **Pastas:** `backend/`
 - **Depende de:** T40
-- **Entregáveis:** plugin autostart iniciando oculto; **desligado por padrão** (decisão do usuário, 29/10/2026): liga pela bandeja, pelas Configurações (T52) ou pela opção do instalador (T90).
+- **Entregáveis:** **opção do instalador** (T90), que cria a entrada de inicialização do Windows; o app abre oculto. Sem controle dentro do app (decisão do usuário, 29/10/2026): para desligar, Gerenciador de Tarefas → Aplicativos de inicialização. O app não usa o plugin autostart.
 - **Pronto quando:** depois de reiniciar o Windows, o atalho funciona sem abrir nada.
 - **Validação:** manual.
 
@@ -161,7 +161,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 - **Objetivo:** `get_settings`, `set_setting` e os comportamentos ligados a eles.
 - **Agente:** Codex · **Pastas:** `backend/`
 - **Depende de:** T20, T42
-- **Entregáveis:** comandos com validação por chave; troca de atalho em tempo real (rollback se falhar); `hideOnBlur` via `Focused(false)`; `autostart` liga/desliga.
+- **Entregáveis:** comandos com validação por chave; troca de atalho em tempo real (rollback se falhar); `hideOnBlur` via `Focused(false)`.
 - **Pronto quando:** testes de validação; trocar o atalho funciona sem reiniciar.
 - **Validação:** `cargo test` + manual.
 
@@ -289,4 +289,4 @@ Somente resultados reais. Formato: data · tarefa · quem · resultado · evidê
 | 2026-10-29 | T22, T31, T32 (parcial) | Claude | parcial: autosave (debounce 500 ms, flush em blur, troca de tela e Ctrl+N, fila única de `save_note` sem criar a nota duas vezes, troca de nota recusada se o salvamento falhar), status salvando/salvo/erro, Histórico (grupos por dia, busca 200 ms, paginação, ↑/↓/Home/End/Enter/Delete/Esc, Desfazer 5 s) e Lixeira (restaurar, excluir para sempre com confirmação, nota da lixeira só leitura com "Restaurar"). **Falta:** a validação manual integrada (persistência após reiniciar, H4, R6), que depende do backend T20/T21/T30 | `npm test` (65 testes, com `invoke` mockado), `npm run check` e `npm run build` passam |
 | 2026-10-29 | T55, T56, T57 (parcial) | Claude | parcial: post-its em janelas separadas (criadas no Rust, `note-N`, transparentes), rotação de 4 cores, menu com 6 cores + opacidade 100/85/70, título opcional (`heading`, migração v2), `open_windows` para reabrir os post-its no lugar. App real: o post-it abriu transparente com cantos arredondados, 70% deixa ver o fundo e salvou. **Bug achado e corrigido:** o "+" travava o app, porque criar janela em comando síncrono trava no Windows (wry #583); os comandos de janela viraram `async`. **2º bug:** fechar o último post-it encerrava o app (padrão do Tauri); agora o processo continua e o atalho abre um novo. **Falta:** teste manual do usuário (vários post-its, reiniciar e voltarem no lugar) | `cargo test` (59), `clippy`, `fmt`; `npm test` (76), `npm run check` |
 | 2026-10-29 | T22, T31, T32, T55, T56, T57 | Usuário | ok: testados no app real (autosave, histórico, lixeira, post-its, cores, transparência, ordem da pilha com Ctrl+Alt+K) | PRs #7 e #8 |
-| 2026-10-29 | T40, T41, T42 (parcial) | Claude | T41 ok: rodar o .exe de novo com o app aberto encerra a 2ª execução na hora (código 0) e fica 1 processo. Bandeja (Abrir, Iniciar com o Windows, Sair) e autostart (desligado por padrão) implementados; a ordem da pilha dos post-its agora é salva no banco (migração v3, coluna `stack`). **Falta:** teste manual da bandeja e do "Sair" (nenhum processo depois) e do autostart após reiniciar o Windows | `cargo test` (61), `clippy`, `fmt`; 2ª execução do .exe |
+| 2026-10-29 | T40, T41, T42 (parcial) | Claude | T41 ok: rodar o .exe de novo com o app aberto encerra a 2ª execução na hora (código 0) e fica 1 processo. Bandeja (Abrir, Sair) implementada; o usuário testou o "Sair" (nenhum processo restou). "Iniciar com o Windows" saiu do app e vai para o instalador (T90); a ordem da pilha dos post-its agora é salva no banco (migração v3, coluna `stack`). **Falta:** a opção do instalador (T90) | `cargo test` (61), `clippy`, `fmt`; 2ª execução do .exe |

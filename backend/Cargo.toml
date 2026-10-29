@@ -29,8 +29,6 @@ tauri-plugin-global-shortcut = "2.4.1"
 rusqlite = { version = "0.41.1", default-features = false, features = ["bundled"] }
 # A second launch only shows the running app instead of starting another one (T41).
 tauri-plugin-single-instance = "2.5.5"
-# Start with Windows (T42), off by default; the installer and Settings turn it on.
-tauri-plugin-autostart = "2.7.0"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
