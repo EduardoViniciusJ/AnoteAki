@@ -172,8 +172,8 @@ A animação de abrir **nunca** pode atrasar o foco do editor.
 - Estados: erro de atalho indisponível no próprio campo.
 
 ### Menu da bandeja
-- Clique esquerdo: mostra a janela (`window-shown` com `reason: "tray"`).
-- Menu do clique direito: **Abrir** · separador · **Sair**.
+- Clique esquerdo: mostra todos os post-its (`window-shown` com `reason: "tray"`).
+- Menu do clique direito: **Abrir** · ☑ **Iniciar com o Windows** · separador · **Sair**.
 - Tooltip: nome do app.
 
 ### Mapa de teclado

@@ -21,8 +21,9 @@ pub struct OpenWindow {
 }
 
 pub fn list(conn: &Connection) -> Result<Vec<OpenWindow>, AppError> {
-    let mut stmt = conn
-        .prepare("SELECT label, note_id, x, y, width, height FROM open_windows ORDER BY rowid")?;
+    let mut stmt = conn.prepare(
+        "SELECT label, note_id, x, y, width, height FROM open_windows ORDER BY stack, rowid",
+    )?;
     let rows = stmt.query_map([], |row| {
         Ok(OpenWindow {
             label: row.get(0)?,
@@ -51,8 +52,9 @@ pub fn upsert(conn: &Connection, window: &OpenWindow) -> Result<(), AppError> {
         params![window.note_id, window.label],
     )?;
     conn.execute(
-        "INSERT INTO open_windows (label, note_id, x, y, width, height) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6) \
+        // A new window goes on top of the stack; an existing one keeps its place.
+        "INSERT INTO open_windows (label, note_id, x, y, width, height, stack) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, (SELECT COALESCE(MAX(stack), 0) + 1 FROM open_windows)) \
          ON CONFLICT(label) DO UPDATE SET note_id = ?2, x = ?3, y = ?4, width = ?5, height = ?6",
         params![window.label, window.note_id, x, y, width, height],
     )?;
@@ -64,6 +66,16 @@ pub fn update_bounds(conn: &Connection, label: &str, bounds: Bounds) -> Result<(
     conn.execute(
         "UPDATE open_windows SET x = ?2, y = ?3, width = ?4, height = ?5 WHERE label = ?1",
         params![label, bounds.x, bounds.y, bounds.width, bounds.height],
+    )?;
+    Ok(())
+}
+
+/// Puts a window on top of the stack.
+pub fn raise(conn: &Connection, label: &str) -> Result<(), AppError> {
+    conn.execute(
+        "UPDATE open_windows SET stack = (SELECT COALESCE(MAX(stack), 0) + 1 FROM open_windows) \
+         WHERE label = ?1",
+        [label],
     )?;
     Ok(())
 }
@@ -131,6 +143,20 @@ mod tests {
         let open = list(&conn).unwrap();
         assert_eq!(open.len(), 1);
         assert_eq!(open[0].label, "note-2");
+    }
+
+    #[test]
+    fn keeps_the_stacking_order() {
+        let conn = open_in_memory();
+        let (a, b, c) = (note(&conn), note(&conn), note(&conn));
+        for (label, id) in [("note-1", a), ("note-2", b), ("note-3", c)] {
+            upsert(&conn, &window(label, id)).unwrap();
+        }
+        raise(&conn, "note-1").unwrap();
+        // Moving a window does not change its place in the stack.
+        upsert(&conn, &window("note-2", b)).unwrap();
+        let labels: Vec<_> = list(&conn).unwrap().into_iter().map(|w| w.label).collect();
+        assert_eq!(labels, ["note-2", "note-3", "note-1"]);
     }
 
     #[test]

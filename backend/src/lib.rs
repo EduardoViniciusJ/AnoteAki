@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
 
 use crate::db::Db;
-use crate::window::Windows;
+use crate::window::{ShowReason, Windows};
 
 /// Opens the database in `%APPDATA%\com.anoteaki.desktop`. If it fails, the app still starts
 /// and note commands return `DB_ERROR`, which the UI shows (PRD §8).
@@ -27,6 +27,22 @@ fn open_database(app: &AppHandle) -> Option<Connection> {
 /// Builds and runs the Tauri app.
 pub fn run() -> tauri::Result<()> {
     tauri::Builder::default()
+        // Must be the first plugin: a second launch stops here and wakes the running app.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            let shown = window::show_all(
+                app,
+                &app.state::<Db>(),
+                &app.state::<Windows>(),
+                ShowReason::SecondInstance,
+            );
+            if shown.is_err() {
+                eprintln!("AnoteAki: não foi possível mostrar as notas.");
+            }
+        }))
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .plugin(shortcut::plugin())
         .setup(|app| {
             app.manage(Db::new(open_database(app.handle())));
@@ -36,13 +52,14 @@ pub fn run() -> tauri::Result<()> {
                 eprintln!("AnoteAki: não foi possível reabrir as notas.");
             }
             shortcut::register(handle);
+            tray::create(handle)?;
             Ok(())
         })
         .on_window_event(|window, event| {
             let app = window.app_handle();
             match event {
                 // Alt+F4 / close hides all sticky notes, like Esc; the process lives
-                // until "Quit" in the tray (T40).
+                // until "Sair" in the tray.
                 WindowEvent::CloseRequested { api, .. } => {
                     api.prevent_close();
                     if window::hide_all(app, &app.state::<Db>()).is_err() {
@@ -51,6 +68,7 @@ pub fn run() -> tauri::Result<()> {
                 }
                 WindowEvent::Focused(true) => {
                     let _ = app.state::<Windows>().focused(window.label());
+                    window::save_stack(&app.state::<Db>(), window.label());
                 }
                 // Losing focus is the end of a drag or resize: save where the note is.
                 WindowEvent::Focused(false) => {

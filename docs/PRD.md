@@ -207,7 +207,7 @@ interface Settings {
   theme: Theme;              // padrão "system"
   shortcut: string;          // padrão "Ctrl+Alt+K" (formato accelerator do plugin global-shortcut)
   hideOnBlur: boolean;       // padrão true
-  autostart: boolean;        // padrão true
+  autostart: boolean;        // padrão false: quem liga é o instalador (T90) ou o usuário (bandeja/Configurações)
 }
 
 type ErrorCode =

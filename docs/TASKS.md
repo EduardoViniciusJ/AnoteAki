@@ -89,7 +89,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 - **Pronto quando:** testes cobrem a criação, a atualização, o título derivado, o limite, `NOT_FOUND` e a lixeira.
 - **Validação:** `cargo test`.
 
-### [~] T22. Autosave, nova nota e status
+### [x] T22. Autosave, nova nota e status
 - **Objetivo:** o texto nunca se perde e `Ctrl+N` separa as notas.
 - **Agente:** Claude · **Pastas:** `frontend/`
 - **Depende de:** T12, T21
@@ -109,7 +109,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 - **Pronto quando:** testes: "acao" encontra "ação"; entrada com `"`, `*`, `-`, `NEAR` não gera erro; notas vazias fora de `active`; ordem por `updatedAt`/relevância; purge só na lixeira.
 - **Validação:** `cargo test`.
 
-### [~] T31. Tela Histórico
+### [x] T31. Tela Histórico
 - **Objetivo:** reencontrar notas por data ou busca.
 - **Agente:** Claude · **Pastas:** `frontend/`
 - **Depende de:** T22, T30
@@ -117,7 +117,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 - **Pronto quando:** a hipótese H4 é testada (10 notas) e registrada; tudo funciona sem mouse.
 - **Validação:** Vitest (`groupByDay`, formatação de datas) + manual.
 
-### [~] T32. Lixeira na UI
+### [x] T32. Lixeira na UI
 - **Objetivo:** restaurar ou excluir definitivamente.
 - **Agente:** Claude · **Pastas:** `frontend/`
 - **Depende de:** T31
@@ -129,27 +129,27 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 
 ## Etapa 4: Bandeja e sistema (Fase 4)
 
-### [ ] T40. Bandeja
+### [~] T40. Bandeja
 - **Objetivo:** ícone com Abrir e Sair; o app vive na bandeja.
-- **Agente:** Codex · **Pastas:** `backend/`
+- **Agente:** Claude · **Pastas:** `backend/`
 - **Depende de:** T11
 - **Entregáveis:** tray nativo (clique esquerdo mostra, menu Abrir/Sair, tooltip); `window-shown` com `reason: "tray"`; "Sair" encerra todos os processos.
 - **Pronto quando:** depois de "Sair", nenhum processo AnoteAki/WebView2 do app permanece.
 - **Validação:** manual (Gerenciador de Tarefas).
 
-### [ ] T41. Instância única
+### [x] T41. Instância única
 - **Objetivo:** uma 2ª execução só mostra a janela existente.
-- **Agente:** Codex · **Pastas:** `backend/`
+- **Agente:** Claude · **Pastas:** `backend/`
 - **Depende de:** T40
 - **Entregáveis:** plugin single-instance; `window-shown` com `reason: "second-instance"`.
 - **Pronto quando:** abrir o .exe 2 vezes resulta em 1 ícone na bandeja.
 - **Validação:** manual.
 
-### [ ] T42. Iniciar com o Windows
+### [~] T42. Iniciar com o Windows
 - **Objetivo:** atalho disponível logo após o login.
-- **Agente:** Codex · **Pastas:** `backend/`
+- **Agente:** Claude · **Pastas:** `backend/`
 - **Depende de:** T40
-- **Entregáveis:** plugin autostart iniciando oculto; ligado por padrão na 1ª execução.
+- **Entregáveis:** plugin autostart iniciando oculto; **desligado por padrão** (decisão do usuário, 29/10/2026): liga pela bandeja, pelas Configurações (T52) ou pela opção do instalador (T90).
 - **Pronto quando:** depois de reiniciar o Windows, o atalho funciona sem abrir nada.
 - **Validação:** manual.
 
@@ -197,7 +197,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 - **Pronto quando:** cada problema foi corrigido ou aceito pelo usuário.
 - **Validação:** revisão do Orq.
 
-### [~] T55. Cor e transparência por post-it
+### [x] T55. Cor e transparência por post-it
 - **Objetivo:** escolher entre as 6 cores da paleta e 3 níveis de opacidade.
 - **Agente:** Claude · **Pastas:** `frontend/`, `backend/`
 - **Depende de:** T21
@@ -205,7 +205,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 - **Pronto quando:** a cor e a opacidade persistem e são respeitadas nos 2 temas.
 - **Validação:** manual.
 
-### [~] T56. Post-its em janelas separadas
+### [x] T56. Post-its em janelas separadas
 - **Objetivo:** cada nota num post-it próprio, como post-its na tela.
 - **Agente:** Claude · **Pastas:** `frontend/`, `backend/`, `docs/`
 - **Depende de:** T22
@@ -213,7 +213,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 - **Pronto quando:** 3 post-its abertos → reiniciar → os 3 voltam no lugar; um post-it em branco não vira nota.
 - **Validação:** `cargo test` + Vitest + manual.
 
-### [~] T57. Título da nota
+### [x] T57. Título da nota
 - **Objetivo:** título opcional em negrito, separado do texto.
 - **Agente:** Claude · **Pastas:** `frontend/`, `backend/`
 - **Depende de:** T21
@@ -288,3 +288,5 @@ Somente resultados reais. Formato: data · tarefa · quem · resultado · evidê
 | 2026-10-29 | T30 | Claude | ok: `list_notes` (ordem `updatedAt`, paginação, vazias fora de `active`), `search_notes` ("acao" acha "ação", `"`/`*`/`-`/`NEAR`/`AND`/`:`/`^`/`(` sem erro, só ativas, `bm25`), `delete_note`, `restore_note`, `purge_note` (só na lixeira). No banco real, `MATCH 'acao'` achou "Plano de ação" | `cargo test` + consulta ao banco |
 | 2026-10-29 | T22, T31, T32 (parcial) | Claude | parcial: autosave (debounce 500 ms, flush em blur, troca de tela e Ctrl+N, fila única de `save_note` sem criar a nota duas vezes, troca de nota recusada se o salvamento falhar), status salvando/salvo/erro, Histórico (grupos por dia, busca 200 ms, paginação, ↑/↓/Home/End/Enter/Delete/Esc, Desfazer 5 s) e Lixeira (restaurar, excluir para sempre com confirmação, nota da lixeira só leitura com "Restaurar"). **Falta:** a validação manual integrada (persistência após reiniciar, H4, R6), que depende do backend T20/T21/T30 | `npm test` (65 testes, com `invoke` mockado), `npm run check` e `npm run build` passam |
 | 2026-10-29 | T55, T56, T57 (parcial) | Claude | parcial: post-its em janelas separadas (criadas no Rust, `note-N`, transparentes), rotação de 4 cores, menu com 6 cores + opacidade 100/85/70, título opcional (`heading`, migração v2), `open_windows` para reabrir os post-its no lugar. App real: o post-it abriu transparente com cantos arredondados, 70% deixa ver o fundo e salvou. **Bug achado e corrigido:** o "+" travava o app, porque criar janela em comando síncrono trava no Windows (wry #583); os comandos de janela viraram `async`. **2º bug:** fechar o último post-it encerrava o app (padrão do Tauri); agora o processo continua e o atalho abre um novo. **Falta:** teste manual do usuário (vários post-its, reiniciar e voltarem no lugar) | `cargo test` (59), `clippy`, `fmt`; `npm test` (76), `npm run check` |
+| 2026-10-29 | T22, T31, T32, T55, T56, T57 | Usuário | ok: testados no app real (autosave, histórico, lixeira, post-its, cores, transparência, ordem da pilha com Ctrl+Alt+K) | PRs #7 e #8 |
+| 2026-10-29 | T40, T41, T42 (parcial) | Claude | T41 ok: rodar o .exe de novo com o app aberto encerra a 2ª execução na hora (código 0) e fica 1 processo. Bandeja (Abrir, Iniciar com o Windows, Sair) e autostart (desligado por padrão) implementados; a ordem da pilha dos post-its agora é salva no banco (migração v3, coluna `stack`). **Falta:** teste manual da bandeja e do "Sair" (nenhum processo depois) e do autostart após reiniciar o Windows | `cargo test` (61), `clippy`, `fmt`; 2ª execução do .exe |

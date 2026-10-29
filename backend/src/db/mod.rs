@@ -20,6 +20,7 @@ pub const FILE_NAME: &str = "anoteaki.db";
 const MIGRATIONS: &[&str] = &[
     include_str!("migrations/001_init.sql"),
     include_str!("migrations/002_sticky_notes.sql"),
+    include_str!("migrations/003_window_stack.sql"),
 ];
 
 /// `PRAGMA user_version` after all migrations.
