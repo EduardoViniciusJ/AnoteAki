@@ -1,0 +1,4 @@
+# LF em todo texto: Biome e rustfmt esperam LF, inclusive no runner Windows.
+* text=auto eol=lf
+*.png binary
+*.ico binary
