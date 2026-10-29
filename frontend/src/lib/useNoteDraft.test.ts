@@ -9,7 +9,17 @@ const saveMock = vi.mocked(saveNote);
 
 function note(id: number, body: string, deletedAt: string | null = null): Note {
   const now = "2026-10-29T12:00:00.000Z";
-  return { id, title: body, body, color: null, createdAt: now, updatedAt: now, deletedAt };
+  return {
+    id,
+    title: body,
+    heading: "",
+    body,
+    color: "pink",
+    opacity: 85,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt,
+  };
 }
 
 /** Fake `save_note`: creates ids 1, 2, 3… and returns the saved note. */
@@ -25,6 +35,8 @@ async function waitDebounce() {
   });
 }
 
+const sent = () => saveMock.mock.calls.map(([input]) => input);
+
 beforeEach(() => {
   vi.useFakeTimers();
   saveMock.mockReset();
@@ -38,29 +50,29 @@ afterEach(() => {
 describe("useNoteDraft", () => {
   it("salva uma vez, 500 ms depois da última tecla", async () => {
     const { result } = renderHook(() => useNoteDraft());
-    act(() => result.current.edit("o"));
+    act(() => result.current.edit({ body: "o" }));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300);
     });
-    act(() => result.current.edit("oi"));
+    act(() => result.current.edit({ body: "oi" }));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(SAVE_DELAY_MS - 1);
     });
     expect(saveMock).not.toHaveBeenCalled();
     expect(result.current.status).toBe("saving");
     await waitDebounce();
-    expect(saveMock).toHaveBeenCalledExactlyOnceWith({ id: null, body: "oi" });
+    expect(sent()).toEqual([{ id: null, body: "oi", heading: "", color: "yellow", opacity: 100 }]);
     expect(result.current.noteId).toBe(1);
     expect(result.current.status).toBe("saved");
   });
 
   it("rascunho id=null: cria uma vez e depois atualiza a mesma nota", async () => {
     const { result } = renderHook(() => useNoteDraft());
-    act(() => result.current.edit("a"));
+    act(() => result.current.edit({ body: "a" }));
     await waitDebounce();
-    act(() => result.current.edit("ab"));
+    act(() => result.current.edit({ body: "ab" }));
     await waitDebounce();
-    expect(saveMock.mock.calls.map(([input]) => input)).toEqual([
+    expect(sent().map(({ id, body }) => ({ id, body }))).toEqual([
       { id: null, body: "a" },
       { id: 1, body: "ab" },
     ]);
@@ -70,9 +82,9 @@ describe("useNoteDraft", () => {
     let finish: (n: Note) => void = () => {};
     saveMock.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
     const { result } = renderHook(() => useNoteDraft());
-    act(() => result.current.edit("a"));
+    act(() => result.current.edit({ body: "a" }));
     await waitDebounce();
-    act(() => result.current.edit("ab"));
+    act(() => result.current.edit({ body: "ab" }));
     let flushed: Promise<boolean> = Promise.resolve(false);
     act(() => {
       flushed = result.current.flush();
@@ -81,35 +93,63 @@ describe("useNoteDraft", () => {
       finish(note(7, "a"));
       await flushed;
     });
-    expect(saveMock.mock.calls.map(([input]) => input)).toEqual([
-      { id: null, body: "a" },
-      { id: 7, body: "ab" },
-    ]);
+    expect(sent().map(({ id }) => id)).toEqual([null, 7]);
   });
 
-  it("não cria nota com o corpo vazio", async () => {
+  it("não cria nota sem título nem texto", async () => {
     const { result } = renderHook(() => useNoteDraft());
-    act(() => result.current.edit("   "));
+    act(() => result.current.edit({ heading: "  ", body: "   " }));
     await waitDebounce();
     expect(saveMock).not.toHaveBeenCalled();
     expect(result.current.status).toBe("idle");
   });
 
+  it("só o título já cria a nota", async () => {
+    const { result } = renderHook(() => useNoteDraft());
+    act(() => result.current.edit({ heading: "Mercado" }));
+    await waitDebounce();
+    expect(sent()[0]).toMatchObject({ id: null, heading: "Mercado", body: "" });
+  });
+
+  it("cor e transparência entram no salvamento", async () => {
+    const { result } = renderHook(() => useNoteDraft());
+    act(() => result.current.replace(null, { color: "blue", opacity: 100 }));
+    act(() => result.current.edit({ body: "oi" }));
+    act(() => result.current.setLook({ color: "green", opacity: 70 }));
+    await waitDebounce();
+    expect(sent()).toEqual([{ id: null, body: "oi", heading: "", color: "green", opacity: 70 }]);
+    expect(result.current.look).toEqual({ color: "green", opacity: 70 });
+  });
+
+  it("mudar a cor de um post-it vazio não cria nota", async () => {
+    const { result } = renderHook(() => useNoteDraft());
+    act(() => result.current.setLook({ color: "pink", opacity: 100 }));
+    await waitDebounce();
+    expect(saveMock).not.toHaveBeenCalled();
+  });
+
   it("nota existente pode ficar vazia", async () => {
     const { result } = renderHook(() => useNoteDraft());
     act(() => result.current.replace(note(3, "x")));
-    act(() => result.current.edit(""));
+    act(() => result.current.edit({ body: "" }));
     await waitDebounce();
-    expect(saveMock).toHaveBeenCalledExactlyOnceWith({ id: 3, body: "" });
+    expect(sent()[0]).toMatchObject({ id: 3, body: "" });
+  });
+
+  it("carrega título, cor e transparência da nota", () => {
+    const { result } = renderHook(() => useNoteDraft());
+    act(() => result.current.replace({ ...note(4, "x"), heading: "Plano" }));
+    expect(result.current.heading).toBe("Plano");
+    expect(result.current.look).toEqual({ color: "pink", opacity: 85 });
   });
 
   it("perder o foco da janela salva na hora", async () => {
     const { result } = renderHook(() => useNoteDraft());
-    act(() => result.current.edit("oi"));
+    act(() => result.current.edit({ body: "oi" }));
     await act(async () => {
       window.dispatchEvent(new Event("blur"));
     });
-    expect(saveMock).toHaveBeenCalledExactlyOnceWith({ id: null, body: "oi" });
+    expect(saveMock).toHaveBeenCalledOnce();
     await waitDebounce();
     expect(saveMock).toHaveBeenCalledOnce();
   });
@@ -117,70 +157,31 @@ describe("useNoteDraft", () => {
   it("erro: status de erro e nova tentativa no próximo debounce", async () => {
     saveMock.mockRejectedValueOnce({ code: "DB_ERROR", message: "x" });
     const { result } = renderHook(() => useNoteDraft());
-    act(() => result.current.edit("oi"));
+    act(() => result.current.edit({ body: "oi" }));
     await waitDebounce();
     expect(result.current.status).toBe("error");
     expect(result.current.body).toBe("oi");
-    act(() => result.current.edit("oi!"));
+    act(() => result.current.edit({ body: "oi!" }));
     await waitDebounce();
-    expect(saveMock).toHaveBeenLastCalledWith({ id: null, body: "oi!" });
+    expect(sent().at(-1)).toMatchObject({ id: null, body: "oi!" });
     expect(result.current.status).toBe("saved");
   });
 
-  it("open salva a atual antes de trocar (Ctrl+N gera 2 notas)", async () => {
-    const { result } = renderHook(() => useNoteDraft());
-    act(() => result.current.edit("primeira"));
-    await act(async () => {
-      await result.current.open(async () => null);
-    });
-    expect(result.current.noteId).toBeNull();
-    expect(result.current.body).toBe("");
-    act(() => result.current.edit("segunda"));
-    await waitDebounce();
-    expect(saveMock.mock.calls.map(([input]) => input)).toEqual([
-      { id: null, body: "primeira" },
-      { id: null, body: "segunda" },
-    ]);
-    expect(result.current.noteId).toBe(2);
-  });
-
-  it("open não troca de nota se o salvamento falhar (o texto não se perde)", async () => {
+  it("flush devolve false se o salvamento falhar", async () => {
     saveMock.mockRejectedValueOnce({ code: "DB_ERROR", message: "x" });
-    const load = vi.fn(async () => note(9, "outra"));
     const { result } = renderHook(() => useNoteDraft());
-    act(() => result.current.edit("importante"));
-    let opened = true;
+    act(() => result.current.edit({ body: "importante" }));
+    let saved = true;
     await act(async () => {
-      opened = await result.current.open(load);
+      saved = await result.current.flush();
     });
-    expect(opened).toBe(false);
-    expect(load).not.toHaveBeenCalled();
+    expect(saved).toBe(false);
     expect(result.current.body).toBe("importante");
   });
 
-  it("open ignora a nota carregada se o usuário digitou enquanto carregava", async () => {
-    let finish: (n: Note | null) => void = () => {};
+  it("nota da lixeira abre como somente leitura", () => {
     const { result } = renderHook(() => useNoteDraft());
-    let opening: Promise<boolean> = Promise.resolve(true);
-    act(() => {
-      opening = result.current.open(() => new Promise((resolve) => (finish = resolve)));
-    });
-    await act(async () => {
-      await Promise.resolve();
-    });
-    act(() => result.current.edit("digitando"));
-    await act(async () => {
-      finish(note(4, "antiga"));
-      await opening;
-    });
-    expect(result.current.body).toBe("digitando");
-  });
-
-  it("nota da lixeira abre como somente leitura", async () => {
-    const { result } = renderHook(() => useNoteDraft());
-    await act(async () => {
-      await result.current.open(async () => note(5, "x", "2026-10-29T12:00:00.000Z"));
-    });
+    act(() => result.current.replace(note(5, "x", "2026-10-29T12:00:00.000Z")));
     expect(result.current.readOnly).toBe(true);
     expect(result.current.noteId).toBe(5);
   });

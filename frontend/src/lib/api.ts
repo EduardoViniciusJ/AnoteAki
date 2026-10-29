@@ -3,12 +3,17 @@ import { type InvokeArgs, invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 export type StickerColor = "yellow" | "pink" | "blue" | "green" | "lilac" | "paper";
+/** Background opacity, in percent. */
+export type StickerOpacity = 100 | 85 | 70;
 
 export interface Note {
   id: number;
   title: string;
+  /** Title typed by the user; `""` = the title comes from the body. */
+  heading: string;
   body: string;
   color: StickerColor | null;
+  opacity: StickerOpacity;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -51,6 +56,13 @@ export interface WindowShownPayload {
   reason: ShowReason;
 }
 
+/** What the calling sticky note window shows. */
+export interface WindowState {
+  noteId: number | null;
+  color: StickerColor;
+  opacity: StickerOpacity;
+}
+
 export interface ShortcutStatus {
   shortcut: string;
   registered: boolean;
@@ -86,8 +98,13 @@ async function call<T>(command: string, args?: InvokeArgs): Promise<T> {
 // Notes
 export const getLastNote = () => call<Note | null>("get_last_note");
 export const getNote = (id: number) => call<Note>("get_note", { id });
-export const saveNote = (input: { id: number | null; body: string; color?: StickerColor | null }) =>
-  call<Note>("save_note", input);
+export const saveNote = (input: {
+  id: number | null;
+  body: string;
+  heading?: string;
+  color?: StickerColor | null;
+  opacity?: StickerOpacity;
+}) => call<Note>("save_note", input);
 export const listNotes = (input: { scope: NoteScope; limit?: number; offset?: number }) =>
   call<NoteSummary[]>("list_notes", input);
 export const searchNotes = (input: { query: string; limit?: number }) =>
@@ -102,6 +119,10 @@ export const setSetting = <K extends keyof Settings>(key: K, value: Settings[K])
   call<Settings>("set_setting", { key, value });
 export const hideWindow = () => call<void>("hide_window");
 export const getShortcutStatus = () => call<ShortcutStatus>("get_shortcut_status");
+export const getWindowState = () => call<WindowState>("get_window_state");
+/** `null` opens a new blank sticky note; an id opens (or focuses) that note. */
+export const openNoteWindow = (noteId: number | null) => call<void>("open_note_window", { noteId });
+export const closeNoteWindow = () => call<void>("close_note_window");
 
 // Events (Rust → UI)
 export const onWindowShown = (

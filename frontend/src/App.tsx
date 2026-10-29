@@ -1,57 +1,80 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { focusAtEnd } from "./components/NoteEditor";
 import {
-  getLastNote,
+  closeNoteWindow,
   getNote,
   getShortcutStatus,
+  getWindowState,
   hideWindow,
-  type Note,
   onWindowShown,
+  openNoteWindow,
   restoreNote,
 } from "./lib/api";
-import { useNoteDraft } from "./lib/useNoteDraft";
+import { type Look, useNoteDraft } from "./lib/useNoteDraft";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { NoteScreen } from "./screens/NoteScreen";
 
 type Screen = "note" | "history";
 
+/** Paints the sticky note with its color and opacity. */
+function applyLook({ color, opacity }: Look) {
+  const root = document.documentElement.style;
+  root.setProperty("--sticker", `var(--sticker-${color})`);
+  root.setProperty("--sticker-opacity", `${opacity}%`);
+}
+
+/** One sticky note window. Each window runs its own App. */
 export function App() {
   const draft = useNoteDraft();
-  const { flush, open, replace } = draft;
+  const { flush, replace } = draft;
   const [screen, setScreen] = useState<Screen>("note");
   const [warning, setWarning] = useState<string | null>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
-  const screenRef = useRef<Screen>("note");
-  screenRef.current = screen;
+  // Read inside callbacks that must not re-subscribe on every keystroke.
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
 
-  // Rust already did show + set_focus; rAF waits for the WebView to paint before focusing.
-  const focusEditor = useCallback(() => {
-    requestAnimationFrame(() => focusAtEnd(editorRef.current));
+  // A blank note starts on the title; a note with text starts at the end of the text.
+  // rAF waits for the WebView to paint after Rust did show + set_focus.
+  // `target` is given when the note just changed and the screen has not re-rendered yet.
+  const focusNote = useCallback((target?: "title" | "body") => {
+    requestAnimationFrame(() => {
+      const { heading, body } = draftRef.current;
+      const where = target ?? (heading || body ? "body" : "title");
+      if (where === "title") titleRef.current?.focus();
+      else focusAtEnd(editorRef.current);
+    });
   }, []);
 
-  const showNote = useCallback(
-    async (load: () => Promise<Note | null>) => {
-      try {
-        await open(load);
-      } catch {
-        // Could not read from the database: keep the current note as is.
-      }
-      setScreen("note");
-      focusEditor();
-    },
-    [open, focusEditor],
-  );
-
-  // On startup and every time the window shows on the Note screen: load the last active note.
   useEffect(() => {
-    void showNote(getLastNote);
-    const unlisten = onWindowShown(() => {
-      if (screenRef.current === "note") void showNote(getLastNote);
-    });
+    applyLook(draft.look);
+  }, [draft.look]);
+
+  // Load the note this window shows.
+  useEffect(() => {
+    let active = true;
+    getWindowState()
+      .then(async (state) => {
+        const note = state.noteId === null ? null : await getNote(state.noteId);
+        if (!active) return;
+        replace(note, { color: state.color, opacity: state.opacity });
+        focusNote(note && (note.heading || note.body) ? "body" : "title");
+      })
+      .catch(() => {
+        // Without the state the window shows a blank note.
+      });
+    return () => {
+      active = false;
+    };
+  }, [replace, focusNote]);
+
+  useEffect(() => {
+    const unlisten = onWindowShown(() => focusNote());
     return () => {
       unlisten.then((stop) => stop()).catch(() => {});
     };
-  }, [showNote]);
+  }, [focusNote]);
 
   // Query (not an event): an event emitted before listen() would be lost.
   useEffect(() => {
@@ -61,7 +84,6 @@ export function App() {
         if (!active || registered) return;
         // The Settings screen (T52) adds an action button here.
         setWarning(`O atalho ${shortcut} está em uso por outro app. Troque-o em Configurações.`);
-        focusEditor();
       })
       .catch(() => {
         // Without the status there is no warning to show; the app still works.
@@ -69,18 +91,23 @@ export function App() {
     return () => {
       active = false;
     };
-  }, [focusEditor]);
+  }, []);
+
+  const backToNote = () => {
+    setScreen("note");
+    focusNote();
+  };
 
   if (screen === "history") {
     return (
       <HistoryScreen
-        onBack={() => {
-          setScreen("note");
-          focusEditor();
+        onBack={backToNote}
+        onOpenNote={(id) => {
+          backToNote();
+          if (id !== draft.noteId) void openNoteWindow(id).catch(() => {});
         }}
-        onOpenNote={(id) => void showNote(() => getNote(id))}
         onNoteTrashed={(id) => {
-          // The open note went to the trash: saving it would return INVALID_INPUT.
+          // This window's note went to the trash: it becomes a blank sticky note.
           if (draft.noteId === id) replace(null);
         }}
       />
@@ -89,8 +116,12 @@ export function App() {
 
   return (
     <NoteScreen
+      heading={draft.heading}
+      onHeadingChange={(heading) => draft.edit({ heading })}
       body={draft.body}
-      onBodyChange={draft.edit}
+      onBodyChange={(body) => draft.edit({ body })}
+      look={draft.look}
+      onLookChange={draft.setLook}
       status={draft.status}
       readOnly={draft.readOnly}
       onRestore={() => {
@@ -99,28 +130,39 @@ export function App() {
         restoreNote(id)
           .then((note) => {
             replace(note);
-            focusEditor();
+            focusNote("body");
           })
           .catch(() => {
             setWarning("Não foi possível restaurar a nota.");
           });
       }}
       onEscape={() => {
-        hideWindow().catch(() => {
-          // Could not hide: the window stays open, nothing is lost.
+        // Could not hide: the windows stay open, nothing is lost.
+        void flush().then(() => hideWindow().catch(() => {}));
+      }}
+      onNewNote={() => {
+        void openNoteWindow(null).catch(() => {
+          setWarning("Não foi possível abrir uma nota nova.");
         });
       }}
-      onNewNote={() => void showNote(async () => null)}
+      onClose={() => {
+        // Close only after saving, so the text is never lost.
+        void flush().then((saved) => {
+          if (saved) closeNoteWindow().catch(() => {});
+        });
+      }}
       onOpenHistory={() => {
         // Save before switching screens (PRD §12) so the history lists the new text.
         // If it fails, the text stays in the draft and the status shows the error.
         void flush().then(() => setScreen("history"));
       }}
+      onTitleSubmit={() => focusAtEnd(editorRef.current)}
       warning={warning}
       onDismissWarning={() => {
         setWarning(null);
-        focusEditor();
+        focusNote();
       }}
+      titleRef={titleRef}
       editorRef={editorRef}
     />
   );

@@ -11,12 +11,23 @@ body,
   margin: 0;
 }
 
+/* The window is transparent: only #app paints the sticky note, so its opacity can change. */
+html,
+body {
+  background: transparent;
+}
+
 body {
   overflow: hidden;
-  background: var(--sticker);
   color: var(--ink);
   font-family: var(--font-ui);
   font-size: var(--text-sm);
   line-height: 1.45;
   user-select: none;
+}
+
+#app {
+  overflow: hidden;
+  border-radius: var(--radius-window);
+  background: color-mix(in srgb, var(--sticker) var(--sticker-opacity), transparent);
 }

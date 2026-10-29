@@ -6,6 +6,7 @@
   --accent: #2f55c8;
   --danger: #b3261e;
   --sticker: var(--sticker-yellow);
+  --sticker-opacity: 100%;
   --surface-2: rgb(0 0 0 / 0.05);
   --border: rgb(0 0 0 / 0.12);
   --shadow: 0 6px 20px rgb(0 0 0 / 0.14), 0 1px 3px rgb(0 0 0 / 0.08);
@@ -31,6 +32,7 @@
   --space-8: 32px;
 
   --radius-control: 6px;
+  --radius-window: 8px;
   --toolbar-height: 32px;
   --icon-button: 28px;
 }

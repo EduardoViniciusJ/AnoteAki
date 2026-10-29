@@ -122,23 +122,26 @@ A animação de abrir **nunca** pode atrasar o foco do editor.
 
 ## Telas e teclado
 
-### Janela
-- Tamanho inicial 360×320px (ajustar no T10), redimensionável, mínimo 280×200px.
-- Sem borda, sempre no topo, fora da barra de tarefas, centralizada no monitor do cursor.
+### Janela (post-it)
+- Cada nota aberta é um post-it numa janela própria: 360×320px, redimensionável, mínimo 280×200px.
+- Sem borda, sempre no topo, fora da barra de tarefas, cantos de 8px. Janela transparente: só o fundo do post-it tem cor, com opacidade de 100%, 85% ou 70%; o texto fica sempre nítido.
+- O primeiro abre centralizado no monitor do cursor; um novo abre 32px abaixo e à direita de quem o abriu.
 - Área de arrastar: a faixa superior (`data-tauri-drag-region`), exceto os botões.
 
 ### Tela 1: Nota (padrão)
 **Objetivo:** escrever imediatamente.
 ```
 ┌───────────────────────────────────┐
-│ [drag region]        [+] [⌕] [⚙]  │  ← barra de 32px, ícones discretos
-│                                   │
-│  editor (textarea, ~85% da área)  │
+│ [drag region]  [🎨] [+] [⌕] [⚙] [×]│  ← barra de 32px, ícones discretos
+│ Título (negrito, opcional)        │
+│  editor (textarea, ~80% da área)  │
 │                                   │
 │                       ● salvo     │  ← status xs, ink-muted
 └───────────────────────────────────┘
 ```
-- Hierarquia: o editor (foco automático) vem primeiro; "+" (nova nota), Histórico e Configurações são secundários.
+- Hierarquia: título e editor vêm primeiro (post-it vazio: foco no título; com texto: fim do texto). `Tab` ou `Enter` no título vão para o texto. Sem título, o histórico usa a 1ª linha do texto.
+- Cor (6 da paleta) e transparência (sólido, 85%, 70%) no menu 🎨; o post-it novo recebe a próxima cor da rotação amarelo → rosa → azul → verde.
+- "+" abre outro post-it; "×" fecha só este (a nota fica no histórico).
 - Estados: vazio (placeholder curto) · salvando · salvo · erro ao salvar (status em `--danger` + nova tentativa no próximo debounce) · somente leitura (nota da lixeira, com a ação "Restaurar" na barra).
 - Aviso não bloqueante quando o atalho não pôde ser registrado (`get_shortcut_status` → `registered: false`), com uma ação que leva às Configurações.
 
@@ -176,10 +179,12 @@ A animação de abrir **nunca** pode atrasar o foco do editor.
 ### Mapa de teclado
 | Tecla | Contexto | Ação |
 |---|---|---|
-| `Ctrl+Alt+K` (configurável) | global | Mostrar / esconder |
-| `Esc` | Nota | Esconder a janela |
+| `Ctrl+Alt+K` (configurável) | global | Mostrar / esconder todos os post-its |
+| `Esc` | Nota | Esconder todos os post-its |
 | `Esc` | Histórico / Configurações | Voltar para Nota (na busca preenchida: limpa primeiro) |
-| `Ctrl+N` | Nota | Nova nota |
+| `Ctrl+N` | Nota | Novo post-it (outra janela) |
+| `Ctrl+W` | Nota | Fechar este post-it |
+| `Tab` / `Enter` | Título | Ir para o texto |
 | `Ctrl+H` | Nota | Abrir Histórico |
 | `Ctrl+F` | Nota / Histórico | Histórico com foco na busca |
 | `Ctrl+,` | qualquer | Configurações |

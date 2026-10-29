@@ -1,6 +1,14 @@
 import "./IconButton.css";
 
-export type IconName = "plus" | "history" | "settings" | "close" | "back" | "trash" | "restore";
+export type IconName =
+  | "plus"
+  | "history"
+  | "settings"
+  | "close"
+  | "back"
+  | "trash"
+  | "restore"
+  | "palette";
 
 // 16×16 stroke icons drawn with paths.
 const PATHS: Record<IconName, string[]> = {
@@ -14,6 +22,10 @@ const PATHS: Record<IconName, string[]> = {
   back: ["M13 8H3", "M7 4L3 8l4 4"],
   trash: ["M2.5 4.5h11", "M6 4.5V3h4v1.5", "M4 4.5l.7 9h6.6l.7-9"],
   restore: ["M3 3v3.5h3.5", "M3.5 6.5A5 5 0 1 1 3 9"],
+  palette: [
+    "M8 2a6 6 0 1 0 0 12c1 0 1.3-.8.9-1.6-.5-.9.1-1.9 1.1-1.9H12a2 2 0 0 0 2-2A6 6 0 0 0 8 2",
+    "M5 7.5h.01M7 5h.01M10 5.5h.01",
+  ],
 };
 
 export interface IconButtonProps {

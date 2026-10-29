@@ -43,6 +43,11 @@ export function NoteListItem({
         onFocus={onFocus}
       >
         <span className="note-list-item__head">
+          <span
+            className="note-list-item__dot"
+            style={{ background: `var(--sticker-${note.color ?? "yellow"})` }}
+            aria-hidden="true"
+          />
           <span className="note-list-item__title">{note.title || "Sem título"}</span>
           <span className="note-list-item__when">{when}</span>
         </span>

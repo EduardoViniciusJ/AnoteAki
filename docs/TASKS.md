@@ -197,13 +197,29 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 - **Pronto quando:** cada problema foi corrigido ou aceito pelo usuário.
 - **Validação:** revisão do Orq.
 
-### [ ] T55. (Could) Cor de sticker por nota
-- **Objetivo:** escolher entre as 6 cores da paleta.
-- **Agente:** Claude · **Pastas:** `frontend/`
-- **Depende de:** T51 (o back já aceita `color` desde o T21)
-- **Entregáveis:** seletor acessível de cor na barra da nota; a cor também aparece no histórico.
-- **Pronto quando:** a cor persiste e é respeitada nos 2 temas.
+### [~] T55. Cor e transparência por post-it
+- **Objetivo:** escolher entre as 6 cores da paleta e 3 níveis de opacidade.
+- **Agente:** Claude · **Pastas:** `frontend/`, `backend/`
+- **Depende de:** T21
+- **Entregáveis:** menu de cor/transparência na barra do post-it; rotação de 4 cores nos post-its novos; a cor também aparece no histórico.
+- **Pronto quando:** a cor e a opacidade persistem e são respeitadas nos 2 temas.
 - **Validação:** manual.
+
+### [~] T56. Post-its em janelas separadas
+- **Objetivo:** cada nota num post-it próprio, como post-its na tela.
+- **Agente:** Claude · **Pastas:** `frontend/`, `backend/`, `docs/`
+- **Depende de:** T22
+- **Entregáveis:** `Ctrl+N` abre outro post-it; `Ctrl+Alt+K`/`Esc` mostram e escondem todos; "×" fecha um; os post-its abertos voltam ao reiniciar com posição e tamanho; abrir pelo histórico abre o post-it da nota.
+- **Pronto quando:** 3 post-its abertos → reiniciar → os 3 voltam no lugar; um post-it em branco não vira nota.
+- **Validação:** `cargo test` + Vitest + manual.
+
+### [~] T57. Título da nota
+- **Objetivo:** título opcional em negrito, separado do texto.
+- **Agente:** Claude · **Pastas:** `frontend/`, `backend/`
+- **Depende de:** T21
+- **Entregáveis:** campo de título acima do texto; `Tab`/`Enter` vão para o texto; sem título, o histórico usa a 1ª linha; título em negrito no histórico e na busca.
+- **Pronto quando:** nota só com título aparece e é encontrada no histórico.
+- **Validação:** `cargo test` + Vitest.
 
 ---
 
@@ -271,3 +287,4 @@ Somente resultados reais. Formato: data · tarefa · quem · resultado · evidê
 | 2026-10-29 | T21 | Claude | ok: `get_last_note`, `get_note`, `save_note` com título derivado (80 chars), limite de 100 000 caracteres, cor validada, nota da lixeira não salva, `NOT_FOUND`. Salvar o mesmo texto não muda o `updatedAt`. **Desvio do contrato:** `color` ausente ou `null` mantém a cor atual (o `invoke` não distingue os dois); voltar para a cor padrão fica para o T55. No app real, digitar criou a nota 1 uma vez e as edições seguintes a atualizaram | `cargo test` + consulta ao banco |
 | 2026-10-29 | T30 | Claude | ok: `list_notes` (ordem `updatedAt`, paginação, vazias fora de `active`), `search_notes` ("acao" acha "ação", `"`/`*`/`-`/`NEAR`/`AND`/`:`/`^`/`(` sem erro, só ativas, `bm25`), `delete_note`, `restore_note`, `purge_note` (só na lixeira). No banco real, `MATCH 'acao'` achou "Plano de ação" | `cargo test` + consulta ao banco |
 | 2026-10-29 | T22, T31, T32 (parcial) | Claude | parcial: autosave (debounce 500 ms, flush em blur, troca de tela e Ctrl+N, fila única de `save_note` sem criar a nota duas vezes, troca de nota recusada se o salvamento falhar), status salvando/salvo/erro, Histórico (grupos por dia, busca 200 ms, paginação, ↑/↓/Home/End/Enter/Delete/Esc, Desfazer 5 s) e Lixeira (restaurar, excluir para sempre com confirmação, nota da lixeira só leitura com "Restaurar"). **Falta:** a validação manual integrada (persistência após reiniciar, H4, R6), que depende do backend T20/T21/T30 | `npm test` (65 testes, com `invoke` mockado), `npm run check` e `npm run build` passam |
+| 2026-10-29 | T55, T56, T57 (parcial) | Claude | parcial: post-its em janelas separadas (criadas no Rust, `note-N`, transparentes), rotação de 4 cores, menu com 6 cores + opacidade 100/85/70, título opcional (`heading`, migração v2), `open_windows` para reabrir os post-its no lugar. App real: o post-it abriu transparente com cantos arredondados, 70% deixa ver o fundo e salvou. **Bug achado e corrigido:** o "+" travava o app, porque criar janela em comando síncrono trava no Windows (wry #583); os comandos de janela viraram `async`. **2º bug:** fechar o último post-it encerrava o app (padrão do Tauri); agora o processo continua e o atalho abre um novo. **Falta:** teste manual do usuário (vários post-its, reiniciar e voltarem no lugar) | `cargo test` (59), `clippy`, `fmt`; `npm test` (76), `npm run check` |

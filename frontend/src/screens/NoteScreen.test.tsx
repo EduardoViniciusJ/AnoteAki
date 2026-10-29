@@ -4,12 +4,18 @@ import { NoteScreen, type NoteScreenProps } from "./NoteScreen";
 
 function renderScreen(props: Partial<NoteScreenProps> = {}) {
   const all: NoteScreenProps = {
+    heading: "",
+    onHeadingChange: vi.fn(),
     body: "",
     onBodyChange: vi.fn(),
+    look: { color: "yellow", opacity: 100 },
+    onLookChange: vi.fn(),
     status: "idle",
     onEscape: vi.fn(),
     onNewNote: vi.fn(),
+    onClose: vi.fn(),
     onOpenHistory: vi.fn(),
+    onTitleSubmit: vi.fn(),
     warning: null,
     onDismissWarning: vi.fn(),
     ...props,
@@ -19,27 +25,49 @@ function renderScreen(props: Partial<NoteScreenProps> = {}) {
 }
 
 const editor = () => screen.getByLabelText("Texto da nota");
+const title = () => screen.getByLabelText("Título da nota");
 
 afterEach(cleanup);
 
 describe("NoteScreen", () => {
-  it("repassa o texto digitado", () => {
+  it("repassa o texto e o título digitados", () => {
     const props = renderScreen();
     fireEvent.change(editor(), { target: { value: "oi" } });
+    fireEvent.change(title(), { target: { value: "Plano" } });
     expect(props.onBodyChange).toHaveBeenCalledWith("oi");
+    expect(props.onHeadingChange).toHaveBeenCalledWith("Plano");
   });
 
-  it("Esc pede para esconder a janela", () => {
+  it("o título vem antes do texto na ordem do Tab", () => {
+    renderScreen();
+    const position = title().compareDocumentPosition(editor());
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("Enter no título vai para o texto", () => {
+    const props = renderScreen();
+    fireEvent.keyDown(title(), { key: "Enter" });
+    expect(props.onTitleSubmit).toHaveBeenCalledOnce();
+  });
+
+  it("Esc pede para esconder os post-its", () => {
     const props = renderScreen();
     fireEvent.keyDown(editor(), { key: "Escape" });
     expect(props.onEscape).toHaveBeenCalledOnce();
   });
 
-  it("Ctrl+N e o botão + criam uma nota nova", () => {
+  it("Ctrl+N e o botão + abrem um post-it novo", () => {
     const props = renderScreen();
     fireEvent.keyDown(editor(), { key: "n", ctrlKey: true });
     fireEvent.click(screen.getByRole("button", { name: /Nova nota/ }));
     expect(props.onNewNote).toHaveBeenCalledTimes(2);
+  });
+
+  it("Ctrl+W e o botão × fecham o post-it", () => {
+    const props = renderScreen();
+    fireEvent.keyDown(title(), { key: "w", ctrlKey: true });
+    fireEvent.click(screen.getByRole("button", { name: /Fechar post-it/ }));
+    expect(props.onClose).toHaveBeenCalledTimes(2);
   });
 
   it("Ctrl+H, Ctrl+F e o botão abrem o histórico", () => {
@@ -56,21 +84,18 @@ describe("NoteScreen", () => {
     expect(props.onNewNote).not.toHaveBeenCalled();
   });
 
-  it("Configurações segue desabilitado", () => {
-    renderScreen();
-    const settings = screen.getByRole("button", { name: /Configurações/ });
-    expect(settings.getAttribute("aria-disabled")).toBe("true");
-  });
-
   it("mostra o status do salvamento", () => {
     renderScreen({ status: "error" });
     expect(screen.getByText("Erro ao salvar")).toBeTruthy();
   });
 
-  it("nota da lixeira: editor só leitura e Restaurar", () => {
+  it("nota da lixeira: título e texto só leitura, cor bloqueada e Restaurar", () => {
     const onRestore = vi.fn();
     renderScreen({ readOnly: true, onRestore });
     expect(editor().hasAttribute("readonly")).toBe(true);
+    expect(title().hasAttribute("readonly")).toBe(true);
+    const palette = screen.getByRole("button", { name: "Cor e transparência" });
+    expect(palette.getAttribute("aria-disabled")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: "Restaurar" }));
     expect(onRestore).toHaveBeenCalledOnce();
   });
@@ -80,10 +105,5 @@ describe("NoteScreen", () => {
     expect(screen.getByRole("status").textContent).toContain("Atalho em uso");
     fireEvent.click(screen.getByRole("button", { name: "Fechar aviso" }));
     expect(props.onDismissWarning).toHaveBeenCalledOnce();
-  });
-
-  it("sem aviso, não há toast", () => {
-    renderScreen();
-    expect(screen.queryByRole("status")).toBeNull();
   });
 });

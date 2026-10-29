@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type Note, saveNote } from "./api";
+import { type Note, type StickerColor, type StickerOpacity, saveNote } from "./api";
 import { debounce } from "./debounce";
 
 /** Autosave debounce (PRD §12). */
@@ -7,54 +7,70 @@ export const SAVE_DELAY_MS = 500;
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
+/** Color and opacity of a sticky note. */
+export interface Look {
+  color: StickerColor;
+  opacity: StickerOpacity;
+}
+
+export const DEFAULT_LOOK: Look = { color: "yellow", opacity: 100 };
+
 export interface NoteDraft {
   /** `null` = draft not created in the database yet. */
   noteId: number | null;
+  heading: string;
   body: string;
+  look: Look;
   /** Note in the trash: read-only until restored. */
   readOnly: boolean;
   status: SaveStatus;
-  edit: (body: string) => void;
+  edit: (change: { heading?: string; body?: string }) => void;
+  setLook: (look: Look) => void;
   /** Saves pending changes now. `false` if saving failed (the text stays in the editor). */
   flush: () => Promise<boolean>;
-  /** Saves the current note and switches to the one returned by `load` (`null` = new blank note). */
-  open: (load: () => Promise<Note | null>) => Promise<boolean>;
-  /** Switches notes without saving the current one (e.g. it was just trashed). */
-  replace: (note: Note | null) => void;
+  /** Shows another note without saving the current one (`null` = blank note with `look`). */
+  replace: (note: Note | null, look?: Look) => void;
 }
 
+interface Content {
+  heading: string;
+  body: string;
+  look: Look;
+}
+
+const EMPTY: Content = { heading: "", body: "", look: DEFAULT_LOOK };
+
 /**
- * Note screen draft with autosave.
+ * Sticky note draft with autosave.
  *
  * Saves are chained on a single promise: a `save_note` with `id: null` always finishes
  * (and returns the id) before the next one, so fast typing never creates the same note twice.
  */
 export function useNoteDraft(): NoteDraft {
   const [noteId, setNoteId] = useState<number | null>(null);
-  const [body, setBody] = useState("");
+  const [content, setContent] = useState<Content>(EMPTY);
   const [readOnly, setReadOnly] = useState(false);
   const [status, setStatus] = useState<SaveStatus>("idle");
 
   // Refs are the source of truth for the save queue; state only feeds the screen.
   const idRef = useRef<number | null>(null);
-  const bodyRef = useRef("");
+  const contentRef = useRef<Content>(EMPTY);
   const dirtyRef = useRef(false);
   const queueRef = useRef<Promise<boolean>>(Promise.resolve(true));
-  const editsRef = useRef(0);
 
   const enqueueSave = useCallback((): Promise<boolean> => {
     if (!dirtyRef.current) return queueRef.current;
     dirtyRef.current = false;
     const job = queueRef.current.then(async () => {
       const id = idRef.current;
-      const text = bodyRef.current;
-      // The UI only creates a note when there is text (PRD §12, save_note).
-      if (id === null && text.trim() === "") {
+      const { heading, body, look } = contentRef.current;
+      // A note is only created once the user typed something.
+      if (id === null && heading.trim() === "" && body.trim() === "") {
         setStatus("idle");
         return true;
       }
       try {
-        const saved = await saveNote({ id, body: text });
+        const saved = await saveNote({ id, body, heading, ...look });
         if (idRef.current === id) {
           idRef.current = saved.id;
           setNoteId(saved.id);
@@ -79,47 +95,42 @@ export function useNoteDraft(): NoteDraft {
     return enqueueSave();
   }, [debouncedSave, enqueueSave]);
 
-  const edit = useCallback(
-    (next: string) => {
-      bodyRef.current = next;
+  const change = useCallback(
+    (next: Content) => {
+      contentRef.current = next;
       dirtyRef.current = true;
-      editsRef.current += 1;
-      setBody(next);
+      setContent(next);
       setStatus("saving");
       debouncedSave();
     },
     [debouncedSave],
   );
 
+  const edit = useCallback(
+    (fields: { heading?: string; body?: string }) => change({ ...contentRef.current, ...fields }),
+    [change],
+  );
+
+  const setLook = useCallback((look: Look) => change({ ...contentRef.current, look }), [change]);
+
   const replace = useCallback(
-    (note: Note | null) => {
+    (note: Note | null, look: Look = contentRef.current.look) => {
       debouncedSave.cancel();
       dirtyRef.current = false;
       idRef.current = note?.id ?? null;
-      bodyRef.current = note?.body ?? "";
+      contentRef.current = note
+        ? {
+            heading: note.heading,
+            body: note.body,
+            look: { color: note.color ?? DEFAULT_LOOK.color, opacity: note.opacity },
+          }
+        : { heading: "", body: "", look };
       setNoteId(idRef.current);
-      setBody(bodyRef.current);
+      setContent(contentRef.current);
       setReadOnly(note?.deletedAt != null);
       setStatus("idle");
     },
     [debouncedSave],
-  );
-
-  const open = useCallback(
-    async (load: () => Promise<Note | null>) => {
-      // Repeat while new typing arrives during the save; stop on failure,
-      // because switching notes with unsaved text would lose it.
-      do {
-        if (!(await flush())) return false;
-      } while (dirtyRef.current);
-      const edits = editsRef.current;
-      const note = await load();
-      // The user typed while loading: the new text wins over the loaded note.
-      if (editsRef.current !== edits) return false;
-      replace(note);
-      return true;
-    },
-    [flush, replace],
   );
 
   // Losing focus saves right away: this makes sure the note is saved before "Quit" in the tray.
@@ -131,5 +142,16 @@ export function useNoteDraft(): NoteDraft {
     return () => window.removeEventListener("blur", onBlur);
   }, [flush]);
 
-  return { noteId, body, readOnly, status, edit, flush, open, replace };
+  return {
+    noteId,
+    heading: content.heading,
+    body: content.body,
+    look: content.look,
+    readOnly,
+    status,
+    edit,
+    setLook,
+    flush,
+    replace,
+  };
 }

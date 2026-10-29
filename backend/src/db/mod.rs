@@ -4,6 +4,7 @@
 //! access avoids `SQLITE_BUSY` between commands.
 
 pub mod notes;
+pub mod windows;
 
 use std::path::Path;
 use std::sync::Mutex;
@@ -16,7 +17,10 @@ use crate::error::AppError;
 pub const FILE_NAME: &str = "anoteaki.db";
 
 /// Migrations in order; index + 1 is the `PRAGMA user_version` after applying it.
-const MIGRATIONS: &[&str] = &[include_str!("migrations/001_init.sql")];
+const MIGRATIONS: &[&str] = &[
+    include_str!("migrations/001_init.sql"),
+    include_str!("migrations/002_sticky_notes.sql"),
+];
 
 /// `PRAGMA user_version` after all migrations.
 fn latest_version() -> i64 {
@@ -55,6 +59,7 @@ pub fn open(path: &Path) -> Result<Connection, AppError> {
     conn.pragma_update(None, "journal_mode", "WAL")?;
     conn.pragma_update(None, "synchronous", "NORMAL")?;
     conn.busy_timeout(std::time::Duration::from_secs(2))?;
+    conn.pragma_update(None, "foreign_keys", "ON")?;
     migrate(&mut conn)?;
     Ok(conn)
 }
@@ -63,6 +68,7 @@ pub fn open(path: &Path) -> Result<Connection, AppError> {
 #[cfg(test)]
 pub fn open_in_memory() -> Connection {
     let mut conn = Connection::open_in_memory().unwrap();
+    conn.pragma_update(None, "foreign_keys", "ON").unwrap();
     migrate(&mut conn).unwrap();
     conn
 }
@@ -111,7 +117,13 @@ mod tests {
     fn migrates_a_new_database_to_the_latest_version() {
         let conn = open_in_memory();
         assert_eq!(user_version(&conn), latest_version());
-        for name in ["notes", "notes_fts", "settings", "idx_notes_updated"] {
+        for name in [
+            "notes",
+            "notes_fts",
+            "settings",
+            "idx_notes_updated",
+            "open_windows",
+        ] {
             assert!(exists(&conn, name), "missing {name}");
         }
     }
