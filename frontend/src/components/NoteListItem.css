@@ -1,0 +1,79 @@
+.note-list-item {
+  position: relative;
+  list-style: none;
+}
+
+.note-list-item__open {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.note-list-item__open:hover,
+.note-list-item__open:focus-visible {
+  background: var(--surface-2);
+}
+
+.note-list-item__open:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.note-list-item__head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.note-list-item__title {
+  flex: 1;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-list-item__when,
+.note-list-item__preview {
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+}
+
+.note-list-item__preview {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ações aparecem no hover e no foco, por cima do horário. */
+.note-list-item__actions {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  display: none;
+  background: var(--sticker);
+  border-radius: var(--radius-control);
+}
+
+.note-list-item:hover .note-list-item__actions,
+.note-list-item:focus-within .note-list-item__actions {
+  display: flex;
+}
+
+.note-list-item__actions .icon-button {
+  margin: 0;
+}
+
+.note-list-item__danger .icon-button {
+  color: var(--danger);
+}

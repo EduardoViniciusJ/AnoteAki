@@ -3,7 +3,7 @@
 ## O projeto
 App desktop (Windows) de notas rápidas: um atalho global abre uma janela flutuante estilo post-it, e o texto é salvo sozinho no SQLite local.
 **Leia antes de implementar:** `docs/TASKS.md` (sua tarefa), `docs/PRD.md` §12 (contrato front↔back), `docs/MVP-SCOPE.md` (o que não fazer) e `docs/DESIGN-GUIDELINES.md` (inclui telas e teclado) se tocar em UI. Contexto: `docs/BRIEF.md`.
-**Orca:** cada worker trabalha na sua própria branch/worktree com o ID da tarefa (ex.: `feat/T21-note-commands`).
+**Orca:** cada worker trabalha na sua própria branch/worktree, com nome descritivo e sem ID de tarefa (ex.: `feat/notes-storage`).
 
 ## Usuário
 - Desenvolvedor estudando Rust/Tauri. Fale em **português (PT-BR)**, seja técnico e direto.
@@ -30,7 +30,7 @@ Tauri 2 · Rust (rusqlite + FTS5, serde) · React 19 + TypeScript + Vite · Vite
 - **Componentes (frontend):** um componente por arquivo em `frontend/src/components/` (`PascalCase.tsx` + `PascalCase.css` ao lado), função com props tipadas e estado só onde é usado. Telas em `src/screens/` compõem componentes; `src/App.tsx` guarda o estado da janela; chamadas ao Rust só via `src/lib/api.ts`. Teste com Testing Library (comportamento, não detalhes de implementação).
 - **Dependências (modelo AnyCaptions):** versões exatas fixadas; `tauri` com `default-features = false` + só as features usadas; `edition = "2024"`, `rust-version = "1.90"`; `engines.node` `^24.15.0 || >=26.0.0`; comentário no `Cargo.toml` justificando cada crate.
 - **Capabilities:** uma permissão por comando do app (`allow-save-note`…), `"local": true`, nada de shell/fs/rede.
-- Branch: `feat/T21-note-commands` (ID da tarefa). Commits: Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
+- Branch: `feat/<slug-descritivo>` (ex.: `feat/notes-storage`), sem ID de tarefa. Commits: Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
 
 ## Comandos
 ```

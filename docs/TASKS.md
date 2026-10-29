@@ -89,7 +89,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 - **Pronto quando:** testes cobrem a criação, a atualização, o título derivado, o limite, `NOT_FOUND` e a lixeira.
 - **Validação:** `cargo test`.
 
-### [ ] T22. Autosave, nova nota e status
+### [~] T22. Autosave, nova nota e status
 - **Objetivo:** o texto nunca se perde e `Ctrl+N` separa as notas.
 - **Agente:** Claude · **Pastas:** `frontend/`
 - **Depende de:** T12, T21
@@ -109,7 +109,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 - **Pronto quando:** testes: "acao" encontra "ação"; entrada com `"`, `*`, `-`, `NEAR` não gera erro; notas vazias fora de `active`; ordem por `updatedAt`/relevância; purge só na lixeira.
 - **Validação:** `cargo test`.
 
-### [ ] T31. Tela Histórico
+### [~] T31. Tela Histórico
 - **Objetivo:** reencontrar notas por data ou busca.
 - **Agente:** Claude · **Pastas:** `frontend/`
 - **Depende de:** T22, T30
@@ -117,7 +117,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 - **Pronto quando:** a hipótese H4 é testada (10 notas) e registrada; tudo funciona sem mouse.
 - **Validação:** Vitest (`groupByDay`, formatação de datas) + manual.
 
-### [ ] T32. Lixeira na UI
+### [~] T32. Lixeira na UI
 - **Objetivo:** restaurar ou excluir definitivamente.
 - **Agente:** Claude · **Pastas:** `frontend/`
 - **Depende de:** T31
@@ -270,3 +270,4 @@ Somente resultados reais. Formato: data · tarefa · quem · resultado · evidê
 | 2026-10-29 | T20 | Claude | ok: banco em `%APPDATA%\com.anoteaki.desktop\anoteaki.db` (WAL, `user_version` = 1), schema do PRD §6 com `notes_fts` (unicode61 sem acentos) e triggers; o FTS acompanha insert/update/delete; banco de versão mais nova é recusado; se o banco não abrir, o app abre e os comandos devolvem `DB_ERROR`. `AppError` com `INVALID_INPUT`, `NOT_FOUND`, `DB_ERROR`, `INTERNAL` (o erro do SQLite não vai para o front). rusqlite 0.41.1 `bundled` (FTS5 confirmado por teste) | `cargo test` (45 testes), `clippy -D warnings`, `fmt --check`; app real criou o arquivo |
 | 2026-10-29 | T21 | Claude | ok: `get_last_note`, `get_note`, `save_note` com título derivado (80 chars), limite de 100 000 caracteres, cor validada, nota da lixeira não salva, `NOT_FOUND`. Salvar o mesmo texto não muda o `updatedAt`. **Desvio do contrato:** `color` ausente ou `null` mantém a cor atual (o `invoke` não distingue os dois); voltar para a cor padrão fica para o T55. No app real, digitar criou a nota 1 uma vez e as edições seguintes a atualizaram | `cargo test` + consulta ao banco |
 | 2026-10-29 | T30 | Claude | ok: `list_notes` (ordem `updatedAt`, paginação, vazias fora de `active`), `search_notes` ("acao" acha "ação", `"`/`*`/`-`/`NEAR`/`AND`/`:`/`^`/`(` sem erro, só ativas, `bm25`), `delete_note`, `restore_note`, `purge_note` (só na lixeira). No banco real, `MATCH 'acao'` achou "Plano de ação" | `cargo test` + consulta ao banco |
+| 2026-10-29 | T22, T31, T32 (parcial) | Claude | parcial: autosave (debounce 500 ms, flush em blur, troca de tela e Ctrl+N, fila única de `save_note` sem criar a nota duas vezes, troca de nota recusada se o salvamento falhar), status salvando/salvo/erro, Histórico (grupos por dia, busca 200 ms, paginação, ↑/↓/Home/End/Enter/Delete/Esc, Desfazer 5 s) e Lixeira (restaurar, excluir para sempre com confirmação, nota da lixeira só leitura com "Restaurar"). **Falta:** a validação manual integrada (persistência após reiniciar, H4, R6), que depende do backend T20/T21/T30 | `npm test` (65 testes, com `invoke` mockado), `npm run check` e `npm run build` passam |
