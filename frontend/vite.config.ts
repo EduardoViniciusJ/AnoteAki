@@ -5,8 +5,8 @@ export default defineConfig({
   plugins: [react()],
   clearScreen: false,
   server: { host: "127.0.0.1", port: 1420, strictPort: true },
-  // assetsInlineLimit: 0 — um asset pequeno viraria `data:` URI embutida no JS;
-  // com a CSP restritiva, todo asset vira arquivo servido de 'self'.
+  // assetsInlineLimit: 0 — a small asset would become a `data:` URI inside the JS;
+  // with the strict CSP, every asset must be a file served from 'self'.
   build: { target: "es2022", assetsInlineLimit: 0 },
   test: { environment: "jsdom", include: ["src/**/*.test.{ts,tsx}"], restoreMocks: true },
 });

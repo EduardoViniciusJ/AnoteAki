@@ -11,19 +11,22 @@ publish = false
 name = "anoteaki_lib"
 
 [build-dependencies]
-# Gera o contexto do app (config, ACL, ícones) em tempo de compilação.
+# Generates the app context (config, ACL, icons) at build time.
 tauri-build = { version = "2.7.4", features = [] }
 
 [dependencies]
-# Runtime do app desktop. Sem as features padrão: só o WebView (wry) e a
-# compressão dos assets embutidos; tray e plugins entram nas tarefas deles.
+# Desktop app runtime. No default features: only the WebView (wry) and
+# compression of embedded assets; tray and plugins come with their tasks.
 tauri = { version = "2.12.5", default-features = false, features = ["wry", "compression"] }
-# Serializa AppError e os payloads dos eventos para o front (camelCase).
+# Serializes AppError and event payloads for the UI (camelCase).
 serde = { version = "1.0.229", features = ["derive"] }
-# Mensagem (Display) dos erros do AppError sem boilerplate.
+# AppError messages (Display) without boilerplate.
 thiserror = "2.0.21"
-# Atalho global registrado no Rust (o JS não recebe permissão do plugin).
+# Global shortcut registered in Rust (JS gets no permission for the plugin).
 tauri-plugin-global-shortcut = "2.4.1"
+# Local SQLite for notes. `bundled` builds SQLite in (with FTS5, used by search)
+# so no DLL is needed on Windows; no default features (statement cache and WASM).
+rusqlite = { version = "0.41.1", default-features = false, features = ["bundled"] }
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
@@ -36,5 +39,5 @@ panic = "abort"
 strip = true
 
 [dev-dependencies]
-# Confere nos testes o JSON exato que o front recebe.
+# Checks in tests the exact JSON the UI receives.
 serde_json = "1.0.154"

@@ -1,3 +1,4 @@
-//! Comandos Tauri expostos ao front (contrato em docs/PRD.md §12).
+//! Tauri commands exposed to the UI (contract in docs/PRD.md §12).
 
+pub mod notes;
 pub mod window;

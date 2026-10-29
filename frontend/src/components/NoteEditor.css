@@ -13,7 +13,7 @@
   user-select: text;
 }
 
-/* A janela já indica o foco; o cursor piscando basta (DESIGN-GUIDELINES). */
+/* The window already shows focus; the blinking cursor is enough (DESIGN-GUIDELINES). */
 .note-editor:focus {
   outline: none;
 }

@@ -54,7 +54,7 @@
   }
 }
 
-/* Movimento reduzido: só o fade. */
+/* Reduced motion: fade only. */
 @media (prefers-reduced-motion: reduce) {
   .toast {
     animation-name: toast-fade;

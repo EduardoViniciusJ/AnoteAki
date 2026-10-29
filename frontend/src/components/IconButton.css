@@ -3,7 +3,7 @@
   place-items: center;
   width: var(--icon-button);
   height: var(--icon-button);
-  /* Área de toque ≥ 32px sem aumentar o desenho. */
+  /* Touch area ≥ 32px without making the icon bigger. */
   margin: calc((var(--toolbar-height) - var(--icon-button)) / 2) 0;
   padding: 0;
   border: 0;

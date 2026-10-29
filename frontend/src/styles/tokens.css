@@ -1,5 +1,5 @@
-/* Tokens do DESIGN-GUIDELINES. Única fonte de cores, espaços e raios.
-   A troca de tema (system/light/dark) e a fonte Inter chegam no T51. */
+/* Tokens from DESIGN-GUIDELINES. The only source of colors, spacing and radii.
+   Theme switching (system/light/dark) and the Inter font come in T51. */
 :root {
   --ink: #1f1e1c;
   --ink-muted: #5c5a55;

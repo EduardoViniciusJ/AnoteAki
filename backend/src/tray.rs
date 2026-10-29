@@ -1,1 +1,1 @@
-//! Ícone e menu da bandeja (Abrir/Sair). Entra no T40.
+//! Tray icon and menu (Open/Quit). Comes in T40.

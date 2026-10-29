@@ -1,11 +1,11 @@
-//! Janela principal: mostrar centralizada no monitor do cursor, com foco, e esconder.
+//! Main window: show it centered on the cursor monitor, focused, and hide it.
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Runtime, WebviewWindow};
 
 pub const MAIN: &str = "main";
 
-/// Motivo enviado no evento `window-shown`. `tray` e `second-instance` chegam no T40/T41.
+/// Reason sent in the `window-shown` event. `tray` and `second-instance` come in T40/T41.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ShowReason {
@@ -17,8 +17,8 @@ struct WindowShown {
     reason: ShowReason,
 }
 
-/// Mostra com foco e avisa a UI. O evento vem por último para a UI focar o
-/// editor só com a janela já ativa.
+/// Shows and focuses the window, then tells the UI. The event goes last so the UI
+/// focuses the editor only after the window is active.
 pub fn show(app: &AppHandle, reason: ShowReason) -> tauri::Result<()> {
     let Some(window) = app.get_webview_window(MAIN) else {
         return Ok(());
@@ -27,7 +27,7 @@ pub fn show(app: &AppHandle, reason: ShowReason) -> tauri::Result<()> {
     window.emit_to(MAIN, "window-shown", WindowShown { reason })
 }
 
-/// Sequência do foco: (centralizar se estava oculta) → unminimize → show → set_focus.
+/// Focus sequence: (center if it was hidden) → unminimize → show → set_focus.
 pub fn focus<R: Runtime>(window: &WebviewWindow<R>) -> tauri::Result<()> {
     if !window.is_visible()? {
         center_on_cursor_monitor(window)?;
@@ -35,8 +35,8 @@ pub fn focus<R: Runtime>(window: &WebviewWindow<R>) -> tauri::Result<()> {
     window.unminimize()?;
     window.show()?;
     window.set_focus()?;
-    // Na 1ª exibição de uma janela criada oculta, o Windows mostra mas não a traz
-    // para a frente; repetir o foco na próxima volta do loop de eventos resolve.
+    // The first time a window created hidden is shown, Windows shows it but does not
+    // bring it to the front; focusing again on the next event loop turn fixes it.
     let again = window.clone();
     window.run_on_main_thread(move || {
         if again.set_focus().is_err() {
@@ -66,8 +66,8 @@ fn center_on_cursor_monitor<R: Runtime>(window: &WebviewWindow<R>) -> tauri::Res
     window.set_position(position)
 }
 
-/// Posição que centraliza a janela na área de trabalho do monitor (sem a barra de tarefas).
-/// Se a janela for maior que a área, encosta no canto superior esquerdo dela.
+/// Position that centers the window in the monitor work area (without the taskbar).
+/// If the window is bigger than the area, it sticks to the top-left corner.
 pub fn centered(
     area_position: PhysicalPosition<i32>,
     area_size: PhysicalSize<u32>,
@@ -96,7 +96,7 @@ mod tests {
 
     #[test]
     fn respects_monitor_offset() {
-        // Monitor secundário à esquerda do principal (coordenadas negativas).
+        // Secondary monitor left of the main one (negative coordinates).
         let pos = centered(
             PhysicalPosition::new(-2560, 0),
             PhysicalSize::new(2560, 1400),

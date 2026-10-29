@@ -9,6 +9,14 @@
     "core:event:allow-unlisten",
     "core:window:allow-start-dragging",
     "allow-hide-window",
-    "allow-get-shortcut-status"
+    "allow-get-shortcut-status",
+    "allow-get-last-note",
+    "allow-get-note",
+    "allow-save-note",
+    "allow-list-notes",
+    "allow-search-notes",
+    "allow-delete-note",
+    "allow-restore-note",
+    "allow-purge-note"
   ]
 }

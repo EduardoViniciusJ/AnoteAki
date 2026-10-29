@@ -8,7 +8,7 @@ export interface ToastProps {
   action?: { label: string; onClick: () => void };
 }
 
-/** Aviso não bloqueante no rodapé da janela. */
+/** Non-blocking notice at the bottom of the window. */
 export function Toast({ message, onDismiss, variant = "default", action }: ToastProps) {
   return (
     <div className={variant === "error" ? "toast toast--error" : "toast"} role="status">

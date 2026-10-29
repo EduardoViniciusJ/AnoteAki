@@ -1,5 +1,5 @@
-//! Atalho global (Ctrl+Alt+K) que mostra/esconde a janela principal.
-//! Registrado no Rust: o JS não recebe nenhuma permissão do plugin.
+//! Global shortcut (Ctrl+Alt+K) that shows/hides the main window.
+//! Registered in Rust: the JS side gets no permission for the plugin.
 
 use serde::Serialize;
 use tauri::plugin::TauriPlugin;
@@ -8,7 +8,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 use crate::window::{self, MAIN, ShowReason};
 
-/// Padrão do contrato. A troca pela tela de Configurações chega no T50.
+/// Contract default. Changing it from the Settings screen comes in T50.
 pub const DEFAULT_SHORTCUT: &str = "Ctrl+Alt+K";
 
 #[derive(Debug, PartialEq, Eq)]
@@ -17,8 +17,8 @@ pub enum Toggle {
     Hide,
 }
 
-/// Só esconde se a janela está visível **e** com foco; visível atrás de outra
-/// janela, o atalho a traz para a frente em vez de escondê-la.
+/// Hide only when the window is visible **and** focused; if it is visible behind
+/// another window, the shortcut brings it to the front instead.
 pub fn toggle_action(visible: bool, focused: bool) -> Toggle {
     if visible && focused {
         Toggle::Hide
@@ -30,7 +30,7 @@ pub fn toggle_action(visible: bool, focused: bool) -> Toggle {
 pub fn plugin() -> TauriPlugin<Wry> {
     tauri_plugin_global_shortcut::Builder::new()
         .with_handler(|app, _shortcut, event| {
-            // Só no "pressed": o "released" da mesma tecla alternaria de novo.
+            // Only on "pressed": the "released" of the same key would toggle again.
             if event.state() == ShortcutState::Pressed {
                 toggle(app);
             }
@@ -53,17 +53,17 @@ fn toggle(app: &AppHandle) {
     }
 }
 
-/// Retorno de `get_shortcut_status`. A UI consulta ao iniciar (um evento emitido
-/// antes do `listen()` do JS seria perdido).
+/// Result of `get_shortcut_status`. The UI asks for it on startup (an event emitted
+/// before the JS `listen()` would be lost).
 #[derive(Clone, Debug, Serialize)]
 pub struct ShortcutStatus {
     pub shortcut: String,
     pub registered: bool,
 }
 
-/// Registra o atalho padrão e guarda o resultado no estado do app. Se falhar
-/// (em uso por outro app), mostra a janela: sem atalho ela ficaria inacessível
-/// (a bandeja só chega no T40).
+/// Registers the default shortcut and stores the result in app state. If it fails
+/// (used by another app), shows the window: without a shortcut it would be
+/// unreachable (the tray only comes in T40).
 pub fn register(app: &AppHandle) {
     let registered = app.global_shortcut().register(DEFAULT_SHORTCUT).is_ok();
     app.manage(ShortcutStatus {
