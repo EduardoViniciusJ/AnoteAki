@@ -11,7 +11,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 
 ### [x] T01. Scaffold do projeto Tauri 2 + Vite (TS puro)
 - **Objetivo:** projeto que roda `npm run tauri dev` e mostra uma página em branco.
-- **Agente:** Codex · **Pastas:** `frontend/` (`package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src/main.ts` placeholder, `scripts/tauri.mjs`), `backend/`
+- **Agente:** Codex · **Pastas:** `frontend/` (`package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src/main.ts` placeholder (hoje `main.tsx`), `scripts/tauri.mjs`), `backend/`
 - **Depende de:** —
 - **Entregáveis:** estrutura `backend/` + `frontend/` (modelo AnyCaptions: Tauri apontando para `../frontend`); identifier `com.anoteaki.desktop`; `.gitignore` (target, node_modules, `*.db`); módulos Rust vazios (`commands/`, `db/`, `shortcut.rs`, `tray.rs`).
 - **Pronto quando:** `npm run tauri dev` abre a janela; `cargo test` e `cargo clippy -D warnings` passam.
@@ -57,9 +57,9 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 - **Objetivo:** editor que recebe o foco sempre que a janela aparece.
 - **Agente:** Claude · **Pastas:** `frontend/`
 - **Depende de:** T11
-- **Entregáveis:** layout da Tela 1 (DESIGN-GUIDELINES → Telas e teclado) sem salvar; `src/lib/api.ts` com os tipos do contrato; componentes base (`IconButton`, `NoteEditor`) no padrão de componentes do AGENTS.md; ouvir `window-shown` → focar o textarea; `Esc` → `hide_window`; aviso quando `get_shortcut_status` retorna `registered: false`.
+- **Entregáveis:** layout da Tela 1 (DESIGN-GUIDELINES → Telas e teclado) sem salvar; `src/lib/api.ts` com os tipos do contrato; componentes base (`IconButton`, `NoteEditor`, `Toast`) em React, no padrão do AGENTS.md; ouvir `window-shown` → focar o textarea; `Esc` → `hide_window`; aviso quando `get_shortcut_status` retorna `registered: false`.
 - **Pronto quando:** abrir com o atalho e digitar põe o texto no editor.
-- **Validação:** manual + Vitest em `api.ts` (mocks de `invoke`).
+- **Validação:** manual + Vitest em `api.ts` (mocks de `invoke`) e nos componentes (Testing Library).
 
 ### [ ] T13. Medição de base (foco e latência)
 - **Objetivo:** primeiros números reais de R1 e R2.
@@ -113,7 +113,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 - **Objetivo:** reencontrar notas por data ou busca.
 - **Agente:** Claude · **Pastas:** `frontend/`
 - **Depende de:** T22, T30
-- **Entregáveis:** Tela 2 (DESIGN-GUIDELINES → Telas e teclado) com agrupamento por dia, busca com debounce de 200 ms, paginação, navegação ↑/↓/Enter/Delete/Esc, toast "Desfazer"; renderização só com `textContent`.
+- **Entregáveis:** Tela 2 (DESIGN-GUIDELINES → Telas e teclado) com agrupamento por dia, busca com debounce de 200 ms, paginação, navegação ↑/↓/Enter/Delete/Esc, toast "Desfazer"; conteúdo de nota só como texto JSX.
 - **Pronto quando:** a hipótese H4 é testada (10 notas) e registrada; tudo funciona sem mouse.
 - **Validação:** Vitest (`groupByDay`, formatação de datas) + manual.
 
@@ -266,3 +266,4 @@ Somente resultados reais. Formato: data · tarefa · quem · resultado · evidê
 | 2026-10-28 | T10 | Orq. | ok: a janela começa invisível; sem borda, sempre no topo, fora da barra de tarefas, 360×320 (mín. 280×200); CSP de produção sem quebrar o IPC; capabilities só com `event:listen/unlisten`, `window:start-dragging`, `allow-hide-window` e `allow-get-shortcut-status`. **Transparência:** não adotada. A janela opaca com `shadow: true` já ganha cantos arredondados e sombra nativos do Windows 11 (print), sem os problemas de janela transparente do WebView2 | prints locais |
 | 2026-10-28 | T11 | Orq. | ok (teclas simuladas via `keybd_event`): Ctrl+Alt+K mostra e põe em 1º plano; com foco, esconde; visível sem foco, traz para frente; Alt+F4 esconde e o processo continua. **AltGr+K (ABNT2) também dispara o atalho** (AltGr = Ctrl+Alt no Windows; no ABNT2 AltGr+K não gera caractere, então não há conflito). Atalho em uso (2ª instância): a janela aparece com o aviso, sem crash. **Bug achado e corrigido:** na 1ª exibição após iniciar, a janela não vinha para frente; agora o `set_focus` se repete na volta seguinte do loop. **Contrato:** o evento `shortcut-registration-failed` se perdia (emitido antes do `listen()` do JS) e foi trocado pelo comando `get_shortcut_status` (PRD §12) | `cargo test` (9 testes) + prints |
 | 2026-10-28 | T12 | Orq. | ok: depois do atalho, as letras digitadas (sem clicar) caem no editor; Esc esconde; componentes `IconButton`, `NoteEditor`, `Toast` e a tela `NoteScreen`, renderizados só com `textContent` | `npm test` (13 testes, incl. `api.ts` com `invoke` mockado) + print |
+| 2026-10-28 | T12 (React) | Orq. | ok: front migrado para React 19 (decisão do usuário: manutenção e testes). Build com a CSP de produção e modo dev testados: atalho → digitar cai no editor → Esc esconde | `npm test` (21 testes: api, NoteScreen, App) + print |

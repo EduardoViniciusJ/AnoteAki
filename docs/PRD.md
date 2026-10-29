@@ -59,7 +59,7 @@ App desktop para Windows que mostra um post-it digital flutuante com um atalho g
 |---|---|
 | Desempenho | Latência entre atalho e janela visível com foco: **medir e registrar** (T13, T91). Memória em repouso (app + processos WebView2): **medir e registrar**. Nenhuma meta antes da 1ª medição. |
 | Offline | Todas as funções do MVP funcionam sem rede; o app não faz nenhuma requisição de rede. |
-| Segurança | Capabilities mínimas; CSP `default-src 'self'` sem CDN; conteúdo renderizado só com `textContent`; SQL parametrizado; validação no Rust. |
+| Segurança | Capabilities mínimas; CSP `default-src 'self'` sem CDN; conteúdo de nota só como texto JSX (sem `dangerouslySetInnerHTML`); SQL parametrizado; validação no Rust. |
 | Privacidade | Sem telemetria; nenhum texto de nota em logs; dados só em `%APPDATA%\com.anoteaki.desktop\`. |
 | Acessibilidade | Navegação completa por teclado; foco visível; contraste WCAG AA (≥ 4,5:1 em texto, ≥ 3:1 no anel de foco); respeita `prefers-reduced-motion`. |
 | Confiabilidade | SQLite em modo WAL; perda máxima aceitável = janela de debounce (500 ms) em caso de encerramento forçado. |
@@ -69,9 +69,9 @@ App desktop para Windows que mostra um post-it digital flutuante com um atalho g
 ```
 ┌─────────────────────────── Processo AnoteAki (Tauri) ────────────────────────────┐
 │                                                                                   │
-│  frontend/ (WebView2, TS puro)              backend/ (Rust core)                  │
+│  frontend/ (WebView2, React + TS)           backend/ (Rust core)                  │
 │  src/                                       src/                                  │
-│  ├─ main.ts        (troca de telas)  invoke  ├─ commands/ notes.rs settings.rs     │
+│  ├─ App.tsx        (troca de telas)  invoke  ├─ commands/ notes.rs settings.rs     │
 │  ├─ screens/       Note, History,   ───────► │             window.rs              │
 │  │                 Settings                  ├─ db/ (rusqlite, migrações, FTS5)    │
 │  ├─ components/    NoteEditor, NoteList, ◄── ├─ shortcut.rs  tray.rs              │
@@ -81,7 +81,7 @@ App desktop para Windows que mostra um post-it digital flutuante com um atalho g
 │  └─ styles/        tokens.css, base.css                                           │
 └───────────────────────────────────────────────┬───────────────────────────────────┘
                                                 ▼
-                         %APPDATA%com.anoteaki.desktopanoteaki.db
+                         %APPDATA%\com.anoteaki.desktop\anoteaki.db
 Plugins: global-shortcut (Rust) · autostart · single-instance · tray nativo
 ```
 - Estado compartilhado: `tauri::State<Mutex<rusqlite::Connection>>` (uma conexão, acesso serializado; volume baixo).
