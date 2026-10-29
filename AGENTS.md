@@ -11,7 +11,7 @@ App desktop (Windows) de notas rápidas: um atalho global abre uma janela flutua
 - Os exercícios listados no fim de `docs/TASKS.md` são **do usuário**: não os resolva, apenas revise quando ele pedir.
 
 ## Stack e pastas
-Tauri 2 · Rust (rusqlite + FTS5, serde) · TypeScript/HTML/CSS puro + Vite · Vitest · Biome · GitHub Actions. Pré-requisitos: Windows 11, Rust ≥ 1.90 (MSVC), Node 24 LTS.
+Tauri 2 · Rust (rusqlite + FTS5, serde) · React 19 + TypeScript + Vite · Vitest + Testing Library · Biome · GitHub Actions. Pré-requisitos: Windows 11, Rust ≥ 1.90 (MSVC), Node 24 LTS.
 
 | Pasta | Dono |
 |---|---|
@@ -26,8 +26,8 @@ Tauri 2 · Rust (rusqlite + FTS5, serde) · TypeScript/HTML/CSS puro + Vite · V
 ## Convenções
 - Código, nomes de arquivos, branches e commits em inglês; docs e comentários de domínio em PT-BR.
 - Rust: `snake_case`, erros via enum `AppError` (ver contrato), sem `unwrap()` fora de testes.
-- TS: `strict`, `camelCase`, sem `any`, sem framework de UI.
-- **Componentes (frontend):** um componente por arquivo em `frontend/src/components/` (`PascalCase.ts` + `PascalCase.css` ao lado). Assinatura: `createX(props): { el: HTMLElement; update(props): void; destroy(): void }`. Telas em `src/screens/` só compõem componentes; chamadas ao Rust só via `src/lib/api.ts`.
+- TS: `strict`, `camelCase`, sem `any`. UI em **React** (componentes de função + hooks); React Flow só se surgir uma feature de canvas.
+- **Componentes (frontend):** um componente por arquivo em `frontend/src/components/` (`PascalCase.tsx` + `PascalCase.css` ao lado), função com props tipadas e estado só onde é usado. Telas em `src/screens/` compõem componentes; `src/App.tsx` guarda o estado da janela; chamadas ao Rust só via `src/lib/api.ts`. Teste com Testing Library (comportamento, não detalhes de implementação).
 - **Dependências (modelo AnyCaptions):** versões exatas fixadas; `tauri` com `default-features = false` + só as features usadas; `edition = "2024"`, `rust-version = "1.90"`; `engines.node` `^24.15.0 || >=26.0.0`; comentário no `Cargo.toml` justificando cada crate.
 - **Capabilities:** uma permissão por comando do app (`allow-save-note`…), `"local": true`, nada de shell/fs/rede.
 - Branch: `feat/T21-note-commands` (ID da tarefa). Commits: Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
@@ -49,7 +49,7 @@ npm run tauri build    # instalador NSIS
 ## Segurança (obrigatório)
 - Nunca commite segredos, `.env` ou bancos `.db`.
 - Valide **toda** entrada no Rust (tamanho, formato); use apenas SQL parametrizado.
-- Nunca use `innerHTML`/`insertAdjacentHTML` com conteúdo de nota: só `textContent`.
+- Nunca use `dangerouslySetInnerHTML`/`innerHTML` com conteúdo de nota: o texto vai sempre como filho JSX (o React escapa).
 - Capabilities mínimas; nenhum acesso a shell, fs arbitrário ou rede no MVP. CSP restritiva (sem CDN).
 - **Nunca grave o conteúdo de notas em logs** (nem em debug).
 

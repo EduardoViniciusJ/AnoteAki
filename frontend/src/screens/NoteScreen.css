@@ -1,0 +1,14 @@
+.note-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.note-screen__toolbar {
+  display: flex;
+  flex: none;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  height: var(--toolbar-height);
+  padding: 0 var(--space-1);
+}

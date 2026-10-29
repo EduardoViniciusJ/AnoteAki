@@ -82,7 +82,7 @@ No MVP, a cor por nota é "could" (T55); até lá, o app usa o padrão do tema.
 
 ## Espaçamento, raio e sombra
 - Escala com base 4px: `--space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px; --space-8: 32px`.
-- Raio: `--radius-window: 12px` (se a transparência funcionar; plano B: 0), `--radius-control: 6px`.
+- Raio: `--radius-control: 6px`. A janela não usa raio no CSS: ela é opaca com `shadow: true`, e o Windows 11 já arredonda os cantos e desenha a sombra (decisão do T10).
 - Sombra: só `--shadow` na janela/nota e nos menus. Os controles não têm sombra.
 
 ## Componentes e estados
@@ -140,7 +140,7 @@ A animação de abrir **nunca** pode atrasar o foco do editor.
 ```
 - Hierarquia: o editor (foco automático) vem primeiro; "+" (nova nota), Histórico e Configurações são secundários.
 - Estados: vazio (placeholder curto) · salvando · salvo · erro ao salvar (status em `--danger` + nova tentativa no próximo debounce) · somente leitura (nota da lixeira, com a ação "Restaurar" na barra).
-- Aviso não bloqueante quando ocorre `shortcut-registration-failed`, com uma ação que leva às Configurações.
+- Aviso não bloqueante quando o atalho não pôde ser registrado (`get_shortcut_status` → `registered: false`), com uma ação que leva às Configurações.
 
 ### Tela 2: Histórico
 **Objetivo:** reencontrar e gerenciar notas.

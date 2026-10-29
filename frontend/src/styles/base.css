@@ -1,0 +1,22 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  background: var(--sticker);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  user-select: none;
+}

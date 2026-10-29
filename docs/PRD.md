@@ -27,7 +27,7 @@ App desktop para Windows que mostra um post-it digital flutuante com um atalho g
 **F1. Janela e atalho** (US1, US10)
 - Janela sem borda, sempre no topo, centralizada no monitor ativo, oculta na inicialização, fora da barra de tarefas.
 - O atalho alterna mostrar e esconder; ao mostrar: `show` → `set_focus` → evento `window-shown` → a UI foca o editor.
-- Falha ao registrar o atalho → aviso na UI (`shortcut-registration-failed`), e o app continua utilizável pela bandeja.
+- Falha ao registrar o atalho → a janela é mostrada na inicialização com um aviso (`get_shortcut_status`), e o app continua utilizável pela bandeja.
 - Transparência e cantos arredondados, **se** o protótipo do T10 funcionar bem; plano B: janela opaca com cantos retos.
 
 **F2. Escrita e salvamento** (US2, US3, US4)
@@ -59,7 +59,7 @@ App desktop para Windows que mostra um post-it digital flutuante com um atalho g
 |---|---|
 | Desempenho | Latência entre atalho e janela visível com foco: **medir e registrar** (T13, T91). Memória em repouso (app + processos WebView2): **medir e registrar**. Nenhuma meta antes da 1ª medição. |
 | Offline | Todas as funções do MVP funcionam sem rede; o app não faz nenhuma requisição de rede. |
-| Segurança | Capabilities mínimas; CSP `default-src 'self'` sem CDN; conteúdo renderizado só com `textContent`; SQL parametrizado; validação no Rust. |
+| Segurança | Capabilities mínimas; CSP `default-src 'self'` sem CDN; conteúdo de nota só como texto JSX (sem `dangerouslySetInnerHTML`); SQL parametrizado; validação no Rust. |
 | Privacidade | Sem telemetria; nenhum texto de nota em logs; dados só em `%APPDATA%\com.anoteaki.desktop\`. |
 | Acessibilidade | Navegação completa por teclado; foco visível; contraste WCAG AA (≥ 4,5:1 em texto, ≥ 3:1 no anel de foco); respeita `prefers-reduced-motion`. |
 | Confiabilidade | SQLite em modo WAL; perda máxima aceitável = janela de debounce (500 ms) em caso de encerramento forçado. |
@@ -69,9 +69,9 @@ App desktop para Windows que mostra um post-it digital flutuante com um atalho g
 ```
 ┌─────────────────────────── Processo AnoteAki (Tauri) ────────────────────────────┐
 │                                                                                   │
-│  frontend/ (WebView2, TS puro)              backend/ (Rust core)                  │
+│  frontend/ (WebView2, React + TS)           backend/ (Rust core)                  │
 │  src/                                       src/                                  │
-│  ├─ main.ts        (troca de telas)  invoke  ├─ commands/ notes.rs settings.rs     │
+│  ├─ App.tsx        (troca de telas)  invoke  ├─ commands/ notes.rs settings.rs     │
 │  ├─ screens/       Note, History,   ───────► │             window.rs              │
 │  │                 Settings                  ├─ db/ (rusqlite, migrações, FTS5)    │
 │  ├─ components/    NoteEditor, NoteList, ◄── ├─ shortcut.rs  tray.rs              │
@@ -81,7 +81,7 @@ App desktop para Windows que mostra um post-it digital flutuante com um atalho g
 │  └─ styles/        tokens.css, base.css                                           │
 └───────────────────────────────────────────────┬───────────────────────────────────┘
                                                 ▼
-                         %APPDATA%com.anoteaki.desktopanoteaki.db
+                         %APPDATA%\com.anoteaki.desktop\anoteaki.db
 Plugins: global-shortcut (Rust) · autostart · single-instance · tray nativo
 ```
 - Estado compartilhado: `tauri::State<Mutex<rusqlite::Connection>>` (uma conexão, acesso serializado; volume baixo).
@@ -237,12 +237,14 @@ interface AppError { code: ErrorCode; message: string } // message NUNCA contém
 | `get_settings` | — | `Settings` | Os valores ausentes no banco retornam o padrão. |
 | `set_setting` | `{ key: keyof Settings, value: string \| boolean }` | `Settings` | Valida o tipo por chave. `shortcut`: desregistra o antigo e registra o novo; se falhar, mantém o antigo e retorna `SHORTCUT_UNAVAILABLE`. `autostart`: ativa ou desativa via plugin. |
 | `hide_window` | — | `void` | Esconde a janela principal (usado pelo Esc). |
+| `get_shortcut_status` | — | `{ shortcut: string, registered: boolean }` | Atalho atual e se o registro global deu certo. A UI consulta ao iniciar e mostra um aviso + link para Configurações se `registered = false`. Se o registro falhar na inicialização, o Rust também mostra a janela (senão o app ficaria inacessível). |
 
 ### Eventos (Rust → UI)
 | Evento | Payload | Quando |
 |---|---|---|
 | `window-shown` | `{ reason: "shortcut" \| "tray" \| "second-instance" }` | Logo depois de `show()` + `set_focus()`. A UI recarrega `get_last_note` (se estiver na tela Nota) e foca o editor. |
-| `shortcut-registration-failed` | `{ shortcut: string }` | Na inicialização, se o atalho salvo não puder ser registrado. A UI mostra um aviso + link para Configurações. |
+
+Não há evento de falha do atalho na inicialização: um evento emitido antes de o `listen()` do JS ser registrado é descartado (condição de corrida observada no T11). Por isso o estado é consultado com `get_shortcut_status`.
 
 ### Comportamentos do lado do Rust (sem comando)
 - O atalho global alterna mostrar/esconder (registrado **no Rust**; o JS não tem permissão do plugin).
