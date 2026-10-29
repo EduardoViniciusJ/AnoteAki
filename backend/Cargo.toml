@@ -18,6 +18,12 @@ tauri-build = { version = "2.7.4", features = [] }
 # Runtime do app desktop. Sem as features padrão: só o WebView (wry) e a
 # compressão dos assets embutidos; tray e plugins entram nas tarefas deles.
 tauri = { version = "2.12.5", default-features = false, features = ["wry", "compression"] }
+# Serializa AppError e os payloads dos eventos para o front (camelCase).
+serde = { version = "1.0.229", features = ["derive"] }
+# Mensagem (Display) dos erros do AppError sem boilerplate.
+thiserror = "2.0.21"
+# Atalho global registrado no Rust (o JS não recebe permissão do plugin).
+tauri-plugin-global-shortcut = "2.4.1"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
@@ -28,3 +34,7 @@ lto = true
 opt-level = "s"
 panic = "abort"
 strip = true
+
+[dev-dependencies]
+# Confere nos testes o JSON exato que o front recebe.
+serde_json = "1.0.154"
