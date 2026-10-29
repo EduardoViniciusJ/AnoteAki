@@ -64,7 +64,8 @@ struct Registry {
     next_id: u32,
     next_color: usize,
     slots: HashMap<String, WindowState>,
-    last_focused: Option<String>,
+    /// Stacking order, bottom first: the last one used is on top.
+    stack: Vec<String>,
 }
 
 /// In-memory list of sticky note windows, managed by Tauri.
@@ -93,24 +94,35 @@ impl Windows {
         })
     }
 
+    /// Adds or updates a window. A new one goes on top of the stack.
     pub fn set(&self, label: &str, state: WindowState) -> Result<(), AppError> {
         self.with(|r| {
-            r.slots.insert(label.to_owned(), state);
+            if r.slots.insert(label.to_owned(), state).is_none() {
+                r.stack.push(label.to_owned());
+            }
         })
     }
 
     pub fn remove(&self, label: &str) -> Result<(), AppError> {
         self.with(|r| {
             r.slots.remove(label);
+            r.stack.retain(|l| l != label);
         })
     }
 
+    /// The focused window moves to the top of the stack.
     pub fn focused(&self, label: &str) -> Result<(), AppError> {
-        self.with(|r| r.last_focused = Some(label.to_owned()))
+        self.with(|r| {
+            if r.slots.contains_key(label) {
+                r.stack.retain(|l| l != label);
+                r.stack.push(label.to_owned());
+            }
+        })
     }
 
-    fn last_focused(&self) -> Option<String> {
-        self.with(|r| r.last_focused.clone()).ok().flatten()
+    /// Labels from bottom to top.
+    fn stack(&self) -> Vec<String> {
+        self.with(|r| r.stack.clone()).unwrap_or_default()
     }
 
     fn next_label(&self) -> Result<String, AppError> {
@@ -325,17 +337,18 @@ pub fn show_all(
         let last = db.with(|conn| notes::get_last(conn)).ok().flatten();
         open(app, db, windows, last.as_ref(), None)?;
     }
-    let all = note_windows(app);
-    for window in &all {
+    // Show bottom to top, so every sticky note keeps its place in the stack.
+    let stacked: Vec<WebviewWindow> = windows
+        .stack()
+        .iter()
+        .filter_map(|label| app.get_webview_window(label))
+        .collect();
+    for window in &stacked {
         window.unminimize()?;
         window.show()?;
     }
-    let target = windows
-        .last_focused()
-        .and_then(|label| app.get_webview_window(&label))
-        .or_else(|| all.last().cloned());
-    if let Some(window) = target {
-        focus(&window)?;
+    if let Some(window) = stacked.last() {
+        focus(window)?;
         window.emit_to(window.label(), "window-shown", WindowShown { reason })?;
     }
     Ok(())
@@ -489,6 +502,27 @@ mod tests {
         assert_eq!(windows.state("note-1").unwrap(), Some(state));
         windows.remove("note-1").unwrap();
         assert_eq!(windows.label_of(5).unwrap(), None);
+    }
+
+    #[test]
+    fn stack_keeps_the_order_and_focus_moves_to_top() {
+        let windows = Windows::default();
+        let state = WindowState {
+            note_id: None,
+            color: "yellow".to_owned(),
+            opacity: 100,
+        };
+        for label in ["note-1", "note-2", "note-3"] {
+            windows.set(label, state.clone()).unwrap();
+        }
+        // Updating a window does not move it.
+        windows.set("note-1", state).unwrap();
+        assert_eq!(windows.stack(), ["note-1", "note-2", "note-3"]);
+        windows.focused("note-1").unwrap();
+        assert_eq!(windows.stack(), ["note-2", "note-3", "note-1"]);
+        windows.remove("note-3").unwrap();
+        windows.focused("unknown").unwrap();
+        assert_eq!(windows.stack(), ["note-2", "note-1"]);
     }
 
     #[test]
