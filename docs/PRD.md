@@ -27,7 +27,7 @@ App desktop para Windows que mostra um post-it digital flutuante com um atalho g
 **F1. Janela e atalho** (US1, US10)
 - Janela sem borda, sempre no topo, centralizada no monitor ativo, oculta na inicialização, fora da barra de tarefas.
 - O atalho alterna mostrar e esconder; ao mostrar: `show` → `set_focus` → evento `window-shown` → a UI foca o editor.
-- Falha ao registrar o atalho → aviso na UI (`shortcut-registration-failed`), e o app continua utilizável pela bandeja.
+- Falha ao registrar o atalho → a janela é mostrada na inicialização com um aviso (`get_shortcut_status`), e o app continua utilizável pela bandeja.
 - Transparência e cantos arredondados, **se** o protótipo do T10 funcionar bem; plano B: janela opaca com cantos retos.
 
 **F2. Escrita e salvamento** (US2, US3, US4)
@@ -237,12 +237,14 @@ interface AppError { code: ErrorCode; message: string } // message NUNCA contém
 | `get_settings` | — | `Settings` | Os valores ausentes no banco retornam o padrão. |
 | `set_setting` | `{ key: keyof Settings, value: string \| boolean }` | `Settings` | Valida o tipo por chave. `shortcut`: desregistra o antigo e registra o novo; se falhar, mantém o antigo e retorna `SHORTCUT_UNAVAILABLE`. `autostart`: ativa ou desativa via plugin. |
 | `hide_window` | — | `void` | Esconde a janela principal (usado pelo Esc). |
+| `get_shortcut_status` | — | `{ shortcut: string, registered: boolean }` | Atalho atual e se o registro global deu certo. A UI consulta ao iniciar e mostra um aviso + link para Configurações se `registered = false`. Se o registro falhar na inicialização, o Rust também mostra a janela (senão o app ficaria inacessível). |
 
 ### Eventos (Rust → UI)
 | Evento | Payload | Quando |
 |---|---|---|
 | `window-shown` | `{ reason: "shortcut" \| "tray" \| "second-instance" }` | Logo depois de `show()` + `set_focus()`. A UI recarrega `get_last_note` (se estiver na tela Nota) e foca o editor. |
-| `shortcut-registration-failed` | `{ shortcut: string }` | Na inicialização, se o atalho salvo não puder ser registrado. A UI mostra um aviso + link para Configurações. |
+
+Não há evento de falha do atalho na inicialização: um evento emitido antes de o `listen()` do JS ser registrado é descartado (condição de corrida observada no T11). Por isso o estado é consultado com `get_shortcut_status`.
 
 ### Comportamentos do lado do Rust (sem comando)
 - O atalho global alterna mostrar/esconder (registrado **no Rust**; o JS não tem permissão do plugin).
