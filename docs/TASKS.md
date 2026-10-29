@@ -9,7 +9,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 
 ## Etapa 0: Fundação
 
-### [ ] T01. Scaffold do projeto Tauri 2 + Vite (TS puro)
+### [x] T01. Scaffold do projeto Tauri 2 + Vite (TS puro)
 - **Objetivo:** projeto que roda `npm run tauri dev` e mostra uma página em branco.
 - **Agente:** Codex · **Pastas:** `frontend/` (`package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src/main.ts` placeholder, `scripts/tauri.mjs`), `backend/`
 - **Depende de:** —
@@ -17,7 +17,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 - **Pronto quando:** `npm run tauri dev` abre a janela; `cargo test` e `cargo clippy -D warnings` passam.
 - **Validação:** manual (screenshot) + comandos acima.
 
-### [ ] T02. Ferramentas do front
+### [x] T02. Ferramentas do front
 - **Objetivo:** qualidade automática no TypeScript.
 - **Agente:** Claude · **Pastas:** `frontend/`, `package.json` (scripts/devDeps), `biome.json`, `tsconfig.json`, `vitest.config.ts`
 - **Depende de:** T01
@@ -25,7 +25,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 - **Pronto quando:** `npm run check` e `npm test` passam.
 - **Validação:** os comandos acima.
 
-### [ ] T03. CI no GitHub Actions
+### [x] T03. CI no GitHub Actions
 - **Objetivo:** cada push validado em Windows.
 - **Agente:** Codex · **Pastas:** `.github/workflows/`
 - **Depende de:** T02
@@ -260,4 +260,6 @@ Somente resultados reais. Formato: data · tarefa · quem · resultado · evidê
 
 | Data | Tarefa | Quem | Resultado | Evidência |
 |---|---|---|---|---|
-| | | | | |
+| 2026-10-28 | T01 | Orq. (Codex sem login no Orca) | ok: `npm run tauri dev` abre a janela "AnoteAki"; `cargo test`, `clippy -D warnings` e `fmt --check` passam | screenshot local; Tauri 2.12.5, Vite 8.3.5, TS 7.0.2 |
+| 2026-10-28 | T02 | Orq. | ok: `npm run check` (Biome 2.6.4 + tsc) e `npm test` (Vitest 5.0.5, 3 testes) passam | saída local |
+| 2026-10-28 | T03 | Orq. | ok: workflow verde em windows-latest (todos os passos, incl. `tauri build --debug --no-bundle`) | [run 40794665592](https://github.com/EduardoViniciusJ/AnoteAki/actions/runs/40794665592) |
