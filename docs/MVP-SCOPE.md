@@ -12,9 +12,9 @@ Plataforma: **somente Windows**. Ritmo: estudo, sem prazo. Equipe: o usuário + 
 | Must | Histórico por data, busca (FTS5, sem diferenciar acentos) e exclusão | T30, T31 |
 | Must | Bandeja com Abrir e Sair; fechar a janela só esconde | T40 |
 | Must | Instância única | T41 |
-| Must | Iniciar com o Windows (padrão: ligado) | T42 |
+| Must | Iniciar com o Windows (opção do instalador) | T42, T90 |
 | Should | Tema claro e escuro: segue o Windows ou escolha manual | T51, T52 |
-| Should | Tela de Configurações: tema, atalho, esconder ao perder o foco, iniciar com o Windows | T50, T52 |
+| Should | Tela de Configurações: tema, fonte, atalho, esconder ao perder o foco | T50, T52 |
 | Should | Esconder ao perder o foco (padrão: ligado, configurável) | T50 |
 | Should | Lixeira (restaurar / excluir definitivo) | T30, T32 |
 | Should | `Esc` esconde a janela / volta para a nota | T12, T31 |

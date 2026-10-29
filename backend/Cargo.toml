@@ -15,9 +15,9 @@ name = "anoteaki_lib"
 tauri-build = { version = "2.7.4", features = [] }
 
 [dependencies]
-# Desktop app runtime. No default features: only the WebView (wry) and
-# compression of embedded assets; tray and plugins come with their tasks.
-tauri = { version = "2.12.5", default-features = false, features = ["wry", "compression"] }
+# Desktop app runtime. No default features: only the WebView (wry),
+# compression of embedded assets and the tray icon (T40).
+tauri = { version = "2.12.5", default-features = false, features = ["wry", "compression", "tray-icon"] }
 # Serializes AppError and event payloads for the UI (camelCase).
 serde = { version = "1.0.229", features = ["derive"] }
 # AppError messages (Display) without boilerplate.
@@ -27,6 +27,8 @@ tauri-plugin-global-shortcut = "2.4.1"
 # Local SQLite for notes. `bundled` builds SQLite in (with FTS5, used by search)
 # so no DLL is needed on Windows; no default features (statement cache and WASM).
 rusqlite = { version = "0.41.1", default-features = false, features = ["bundled"] }
+# A second launch only shows the running app instead of starting another one (T41).
+tauri-plugin-single-instance = "2.5.5"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

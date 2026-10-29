@@ -48,11 +48,11 @@ App desktop para Windows que mostra um post-it digital flutuante com um atalho g
 - Bandeja: clique esquerdo abre; menu com "Abrir" e "Sair".
 - Fechar a janela (Alt+F4) esconde; "Sair" encerra.
 - Instância única: uma 2ª execução mostra a janela da instância existente.
-- Iniciar com o Windows (padrão ligado, configurável).
+- Iniciar com o Windows: opção do instalador; depois o usuário liga/desliga no Gerenciador de Tarefas → Aplicativos de inicialização (o app não tem esse controle).
 
 **F5. Aparência e configurações** (US8, US10)
 - Tema `system` | `light` | `dark`; `system` segue `prefers-color-scheme` em tempo real.
-- Configurações: tema, atalho (captura de teclas), esconder ao perder o foco, iniciar com o Windows.
+- Configurações: tema, fonte, atalho (captura de teclas), esconder ao perder o foco.
 
 ## 5. Requisitos não funcionais
 | Área | Requisito |
@@ -82,7 +82,7 @@ App desktop para Windows que mostra um post-it digital flutuante com um atalho g
 └───────────────────────────────────────────────┬───────────────────────────────────┘
                                                 ▼
                          %APPDATA%\com.anoteaki.desktop\anoteaki.db
-Plugins: global-shortcut (Rust) · autostart · single-instance · tray nativo
+Plugins: global-shortcut (Rust) · single-instance · tray nativo (iniciar com o Windows: entrada criada pelo instalador)
 ```
 - Estado compartilhado: `tauri::State<Mutex<rusqlite::Connection>>` (uma conexão, acesso serializado; volume baixo).
 - Migrações versionadas via `PRAGMA user_version`.
@@ -207,7 +207,6 @@ interface Settings {
   theme: Theme;              // padrão "system"
   shortcut: string;          // padrão "Ctrl+Alt+K" (formato accelerator do plugin global-shortcut)
   hideOnBlur: boolean;       // padrão true
-  autostart: boolean;        // padrão true
 }
 
 type ErrorCode =
@@ -245,7 +244,7 @@ interface AppError { code: ErrorCode; message: string } // message NUNCA contém
 | Comando | Args | Retorno | Regras |
 |---|---|---|---|
 | `get_settings` | — | `Settings` | Os valores ausentes no banco retornam o padrão. |
-| `set_setting` | `{ key: keyof Settings, value: string \| boolean }` | `Settings` | Valida o tipo por chave. `shortcut`: desregistra o antigo e registra o novo; se falhar, mantém o antigo e retorna `SHORTCUT_UNAVAILABLE`. `autostart`: ativa ou desativa via plugin. |
+| `set_setting` | `{ key: keyof Settings, value: string \| boolean }` | `Settings` | Valida o tipo por chave. `shortcut`: desregistra o antigo e registra o novo; se falhar, mantém o antigo e retorna `SHORTCUT_UNAVAILABLE`. |
 | `hide_window` | — | `void` | Esconde **todos** os post-its (usado pelo Esc). |
 | `get_window_state` | — | `WindowState` | Nota, cor e opacidade do post-it que chamou. |
 | `open_note_window` | `{ noteId: number \| null }` | `void` | Abre um post-it ao lado do que chamou: `null` = em branco, com a próxima cor da rotação amarelo → rosa → azul → verde; um id = aquela nota (se já estiver aberta, só traz para frente). |

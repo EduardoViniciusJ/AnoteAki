@@ -24,11 +24,13 @@ const MIN_HEIGHT: f64 = 200.0;
 /// Offset of a new sticky note from the one that opened it, in logical pixels.
 const CASCADE: f64 = 32.0;
 
-/// Reason sent in the `window-shown` event. `tray` and `second-instance` come in T40/T41.
+/// Reason sent in the `window-shown` event.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ShowReason {
     Shortcut,
+    Tray,
+    SecondInstance,
 }
 
 #[derive(Clone, Serialize)]
@@ -275,6 +277,13 @@ pub fn save_bounds(db: &Db, window: &WebviewWindow) {
     }
 }
 
+/// Puts a window on top of the saved stack, so the order survives a restart.
+pub fn save_stack(db: &Db, label: &str) {
+    if db.with(|conn| windows::raise(conn, label)).is_err() {
+        eprintln!("AnoteAki: não foi possível salvar a ordem das janelas.");
+    }
+}
+
 /// Recreates the windows left open last time (hidden, like the app starts).
 pub fn restore(app: &AppHandle, db: &Db, windows: &Windows) -> Result<(), AppError> {
     let open = db.with(|conn| windows::list(conn))?;
@@ -455,6 +464,8 @@ mod tests {
         })
         .unwrap();
         assert_eq!(json, r#"{"reason":"shortcut"}"#);
+        let json = serde_json::to_string(&ShowReason::SecondInstance).unwrap();
+        assert_eq!(json, r#""second-instance""#);
     }
 
     #[test]
