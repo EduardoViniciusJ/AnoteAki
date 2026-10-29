@@ -24,6 +24,9 @@ serde = { version = "1.0.229", features = ["derive"] }
 thiserror = "2.0.21"
 # Atalho global registrado no Rust (o JS não recebe permissão do plugin).
 tauri-plugin-global-shortcut = "2.4.1"
+# SQLite local das notas. `bundled` compila o SQLite junto (com FTS5, usado na busca)
+# e dispensa uma DLL no Windows; sem as features padrão (cache de statements e WASM).
+rusqlite = { version = "0.41.1", default-features = false, features = ["bundled"] }
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

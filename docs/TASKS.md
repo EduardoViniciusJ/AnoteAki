@@ -73,7 +73,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 
 ## Etapa 2: Escrita e salvamento (Fase 2)
 
-### [ ] T20. Banco SQLite, migrações e FTS5
+### [x] T20. Banco SQLite, migrações e FTS5
 - **Objetivo:** banco local criado e versionado na inicialização.
 - **Agente:** Codex · **Pastas:** `backend/`
 - **Depende de:** T10
@@ -81,7 +81,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 - **Pronto quando:** testes com `Connection::open_in_memory()` cobrem a migração e a sincronização do FTS (insert/update/delete).
 - **Validação:** `cargo test`.
 
-### [ ] T21. Comandos `get_last_note`, `get_note`, `save_note`
+### [x] T21. Comandos `get_last_note`, `get_note`, `save_note`
 - **Objetivo:** criar, atualizar e ler notas conforme o contrato.
 - **Agente:** Codex · **Pastas:** `backend/`
 - **Depende de:** T20
@@ -101,7 +101,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 
 ## Etapa 3: Histórico (Fase 3)
 
-### [ ] T30. Comandos de lista, busca e lixeira
+### [x] T30. Comandos de lista, busca e lixeira
 - **Objetivo:** `list_notes`, `search_notes`, `delete_note`, `restore_note`, `purge_note`.
 - **Agente:** Codex · **Pastas:** `backend/`
 - **Depende de:** T21
@@ -267,3 +267,6 @@ Somente resultados reais. Formato: data · tarefa · quem · resultado · evidê
 | 2026-10-28 | T11 | Orq. | ok (teclas simuladas via `keybd_event`): Ctrl+Alt+K mostra e põe em 1º plano; com foco, esconde; visível sem foco, traz para frente; Alt+F4 esconde e o processo continua. **AltGr+K (ABNT2) também dispara o atalho** (AltGr = Ctrl+Alt no Windows; no ABNT2 AltGr+K não gera caractere, então não há conflito). Atalho em uso (2ª instância): a janela aparece com o aviso, sem crash. **Bug achado e corrigido:** na 1ª exibição após iniciar, a janela não vinha para frente; agora o `set_focus` se repete na volta seguinte do loop. **Contrato:** o evento `shortcut-registration-failed` se perdia (emitido antes do `listen()` do JS) e foi trocado pelo comando `get_shortcut_status` (PRD §12) | `cargo test` (9 testes) + prints |
 | 2026-10-28 | T12 | Orq. | ok: depois do atalho, as letras digitadas (sem clicar) caem no editor; Esc esconde; componentes `IconButton`, `NoteEditor`, `Toast` e a tela `NoteScreen`, renderizados só com `textContent` | `npm test` (13 testes, incl. `api.ts` com `invoke` mockado) + print |
 | 2026-10-28 | T12 (React) | Orq. | ok: front migrado para React 19 (decisão do usuário: manutenção e testes). Build com a CSP de produção e modo dev testados: atalho → digitar cai no editor → Esc esconde | `npm test` (21 testes: api, NoteScreen, App) + print |
+| 2026-10-29 | T20 | Claude | ok: banco em `%APPDATA%\com.anoteaki.desktop\anoteaki.db` (WAL, `user_version` = 1), schema do PRD §6 com `notes_fts` (unicode61 sem acentos) e triggers; o FTS acompanha insert/update/delete; banco de versão mais nova é recusado; se o banco não abrir, o app abre e os comandos devolvem `DB_ERROR`. `AppError` com `INVALID_INPUT`, `NOT_FOUND`, `DB_ERROR`, `INTERNAL` (o erro do SQLite não vai para o front). rusqlite 0.41.1 `bundled` (FTS5 confirmado por teste) | `cargo test` (45 testes), `clippy -D warnings`, `fmt --check`; app real criou o arquivo |
+| 2026-10-29 | T21 | Claude | ok: `get_last_note`, `get_note`, `save_note` com título derivado (80 chars), limite de 100 000 caracteres, cor validada, nota da lixeira não salva, `NOT_FOUND`. Salvar o mesmo texto não muda o `updatedAt`. **Desvio do contrato:** `color` ausente ou `null` mantém a cor atual (o `invoke` não distingue os dois); voltar para a cor padrão fica para o T55. No app real, digitar criou a nota 1 uma vez e as edições seguintes a atualizaram | `cargo test` + consulta ao banco |
+| 2026-10-29 | T30 | Claude | ok: `list_notes` (ordem `updatedAt`, paginação, vazias fora de `active`), `search_notes` ("acao" acha "ação", `"`/`*`/`-`/`NEAR`/`AND`/`:`/`^`/`(` sem erro, só ativas, `bm25`), `delete_note`, `restore_note`, `purge_note` (só na lixeira). No banco real, `MATCH 'acao'` achou "Plano de ação" | `cargo test` + consulta ao banco |
