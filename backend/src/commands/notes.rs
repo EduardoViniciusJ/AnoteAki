@@ -1,5 +1,5 @@
-//! Comandos de notas (PRD §12). Só repassam para `db::notes`, onde fica a validação.
-//! `async` tira o acesso ao banco da thread principal (a da janela).
+//! Note commands (PRD §12). They only forward to `db::notes`, where validation lives.
+//! `async` keeps database access off the main (window) thread.
 
 use tauri::State;
 

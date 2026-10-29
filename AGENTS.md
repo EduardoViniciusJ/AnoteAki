@@ -24,7 +24,7 @@ Tauri 2 · Rust (rusqlite + FTS5, serde) · React 19 + TypeScript + Vite · Vite
 - Mudou um comando/evento/tipo? **Pare** e peça ao orquestrador para atualizar o `docs/PRD.md` §12 antes.
 
 ## Convenções
-- Código, nomes de arquivos, branches e commits em inglês; docs e comentários de domínio em PT-BR.
+- Código, comentários no código, nomes de arquivos, branches e commits em inglês (comentários curtos e simples); docs em PT-BR.
 - Rust: `snake_case`, erros via enum `AppError` (ver contrato), sem `unwrap()` fora de testes.
 - TS: `strict`, `camelCase`, sem `any`. UI em **React** (componentes de função + hooks); React Flow só se surgir uma feature de canvas.
 - **Componentes (frontend):** um componente por arquivo em `frontend/src/components/` (`PascalCase.tsx` + `PascalCase.css` ao lado), função com props tipadas e estado só onde é usado. Telas em `src/screens/` compõem componentes; `src/App.tsx` guarda o estado da janela; chamadas ao Rust só via `src/lib/api.ts`. Teste com Testing Library (comportamento, não detalhes de implementação).

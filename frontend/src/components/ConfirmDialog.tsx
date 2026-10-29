@@ -8,7 +8,7 @@ export interface ConfirmDialogProps {
   onCancel: () => void;
 }
 
-/** Confirmação de ação destrutiva no rodapé. O foco começa em "Cancelar"; Esc cancela. */
+/** Confirmation for a destructive action, at the bottom. Focus starts on "Cancel"; Esc cancels. */
 export function ConfirmDialog({ message, confirmLabel, onConfirm, onCancel }: ConfirmDialogProps) {
   const messageId = useId();
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -25,7 +25,7 @@ export function ConfirmDialog({ message, confirmLabel, onConfirm, onCancel }: Co
       aria-describedby={messageId}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
-          // Esc fecha só o diálogo, sem voltar de tela.
+          // Esc closes only the dialog, without leaving the screen.
           event.preventDefault();
           event.stopPropagation();
           onCancel();

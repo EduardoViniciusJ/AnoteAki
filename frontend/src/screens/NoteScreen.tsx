@@ -10,21 +10,21 @@ export interface NoteScreenProps {
   body: string;
   onBodyChange: (body: string) => void;
   status: Status;
-  /** Nota da lixeira: editor só leitura e ação "Restaurar". */
+  /** Note in the trash: read-only editor and a "Restaurar" action. */
   readOnly?: boolean;
   onRestore?: () => void;
-  /** `Esc` na tela Nota: esconder a janela. */
+  /** `Esc` on the Note screen: hide the window. */
   onEscape: () => void;
-  /** "+" ou `Ctrl+N`. */
+  /** "+" or `Ctrl+N`. */
   onNewNote: () => void;
-  /** Botão de histórico, `Ctrl+H` ou `Ctrl+F`. */
+  /** History button, `Ctrl+H` or `Ctrl+F`. */
   onOpenHistory: () => void;
   warning: string | null;
   onDismissWarning: () => void;
   editorRef?: Ref<HTMLTextAreaElement>;
 }
 
-/** Tela 1 (DESIGN-GUIDELINES → Telas e teclado). */
+/** Screen 1 (DESIGN-GUIDELINES → Telas e teclado). */
 export function NoteScreen({
   body,
   onBodyChange,
@@ -68,7 +68,7 @@ export function NoteScreen({
         )}
         <IconButton icon="plus" label="Nova nota (Ctrl+N)" onClick={onNewNote} />
         <IconButton icon="history" label="Histórico (Ctrl+H)" onClick={onOpenHistory} />
-        {/* Desabilitado até a tela de Configurações (T52). */}
+        {/* Disabled until the Settings screen (T52). */}
         <IconButton icon="settings" label="Configurações (Ctrl+,) — em breve" disabled />
       </header>
       <NoteEditor

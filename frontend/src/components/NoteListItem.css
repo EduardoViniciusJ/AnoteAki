@@ -55,7 +55,7 @@
   white-space: nowrap;
 }
 
-/* Ações aparecem no hover e no foco, por cima do horário. */
+/* Actions show on hover and focus, on top of the time. */
 .note-list-item__actions {
   position: absolute;
   top: var(--space-1);

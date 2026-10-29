@@ -25,7 +25,7 @@ import "./HistoryScreen.css";
 export const PAGE_SIZE = 50;
 export const SEARCH_DELAY_MS = 200;
 export const UNDO_TIMEOUT_MS = 5000;
-/** Limite de `query` no contrato (PRD §12). */
+/** `query` limit in the contract (PRD §12). */
 const QUERY_MAX = 200;
 
 type Phase = "loading" | "ready" | "error";
@@ -36,14 +36,14 @@ type Notice =
   | { kind: "error"; message: string };
 
 export interface HistoryScreenProps {
-  /** `Esc` (com a busca vazia) ou o botão de voltar. */
+  /** `Esc` (with an empty search) or the back button. */
   onBack: () => void;
   onOpenNote: (id: number) => void;
-  /** A nota foi para a lixeira; a tela Nota troca de nota se for a que está aberta. */
+  /** The note went to the trash; the Note screen switches notes if it is the open one. */
   onNoteTrashed: (id: number) => void;
 }
 
-/** Tela 2 (DESIGN-GUIDELINES → Telas e teclado). */
+/** Screen 2 (DESIGN-GUIDELINES → Telas e teclado). */
 export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScreenProps) {
   const [scope, setScope] = useState<NoteScope>("active");
   const [query, setQuery] = useState("");
@@ -59,10 +59,10 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
   const itemRefs = useRef(new Map<number, HTMLButtonElement>());
   const requestRef = useRef(0);
   const loadingMoreRef = useRef(false);
-  /** Depois de remover um item, o foco vai para o vizinho quando a lista re-renderizar. */
+  /** After removing an item, focus moves to its neighbor when the list re-renders. */
   const refocusRef = useRef(false);
 
-  // A busca só existe na aba Notas (`search_notes` procura só notas ativas).
+  // Search only exists on the Notes tab (`search_notes` only looks at active notes).
   const term = scope === "active" ? query.trim() : "";
 
   useEffect(() => {
@@ -70,7 +70,7 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
     return () => clearTimeout(timer);
   }, [term]);
 
-  // Na Lixeira o termo antigo não vale, nem durante os ms até o debounce zerá-lo.
+  // On the Trash tab the old term does not apply, not even until the debounce clears it.
   const searchTerm = scope === "active" ? debouncedTerm : "";
 
   const loadPage = useCallback(
@@ -81,10 +81,10 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
         const page = searchTerm
           ? await searchNotes({ query: searchTerm, limit: PAGE_SIZE })
           : await listNotes({ scope, limit: PAGE_SIZE, offset });
-        // Uma resposta antiga (busca anterior, outra aba) não sobrescreve a atual.
+        // An old response (previous search, other tab) does not overwrite the current one.
         if (request !== requestRef.current) return;
         setItems((prev) => (offset === 0 ? page : [...prev, ...page]));
-        // `search_notes` não pagina: vem tudo até o limite, por relevância.
+        // `search_notes` does not paginate: it returns everything up to the limit, by relevance.
         setHasMore(!searchTerm && page.length === PAGE_SIZE);
         if (offset === 0) setSelected(0);
         setPhase("ready");
@@ -109,7 +109,7 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
     }
   }, [hasMore, items.length, loadPage]);
 
-  // Ao abrir, o foco vai para a busca.
+  // On open, focus goes to the search field.
   useEffect(() => {
     searchRef.current?.focus();
   }, []);
@@ -324,7 +324,7 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Escape" && query) {
-              // Primeiro Esc limpa a busca; o segundo volta para a Nota.
+              // The first Esc clears the search; the second goes back to the Note.
               event.preventDefault();
               setQuery("");
             } else if (event.key === "ArrowDown") {

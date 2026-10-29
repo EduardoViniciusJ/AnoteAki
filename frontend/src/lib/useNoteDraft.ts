@@ -2,32 +2,32 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type Note, saveNote } from "./api";
 import { debounce } from "./debounce";
 
-/** Debounce do autosave (PRD §12, "Responsabilidade do front em relação a salvamento"). */
+/** Autosave debounce (PRD §12). */
 export const SAVE_DELAY_MS = 500;
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 export interface NoteDraft {
-  /** `null` = rascunho ainda não criado no banco. */
+  /** `null` = draft not created in the database yet. */
   noteId: number | null;
   body: string;
-  /** Nota da lixeira: só leitura até ser restaurada. */
+  /** Note in the trash: read-only until restored. */
   readOnly: boolean;
   status: SaveStatus;
   edit: (body: string) => void;
-  /** Salva agora o que estiver pendente. `false` se o salvamento falhou (o texto continua no editor). */
+  /** Saves pending changes now. `false` if saving failed (the text stays in the editor). */
   flush: () => Promise<boolean>;
-  /** Salva a nota atual e troca pela retornada por `load` (`null` = nota nova em branco). */
+  /** Saves the current note and switches to the one returned by `load` (`null` = new blank note). */
   open: (load: () => Promise<Note | null>) => Promise<boolean>;
-  /** Troca a nota sem salvar a atual (ex.: ela acabou de ir para a lixeira). */
+  /** Switches notes without saving the current one (e.g. it was just trashed). */
   replace: (note: Note | null) => void;
 }
 
 /**
- * Rascunho da tela Nota com autosave.
+ * Note screen draft with autosave.
  *
- * Os salvamentos são enfileirados numa única promise: um `save_note` com `id: null` sempre termina
- * (e devolve o id) antes do próximo, então digitar rápido nunca cria a mesma nota duas vezes.
+ * Saves are chained on a single promise: a `save_note` with `id: null` always finishes
+ * (and returns the id) before the next one, so fast typing never creates the same note twice.
  */
 export function useNoteDraft(): NoteDraft {
   const [noteId, setNoteId] = useState<number | null>(null);
@@ -35,7 +35,7 @@ export function useNoteDraft(): NoteDraft {
   const [readOnly, setReadOnly] = useState(false);
   const [status, setStatus] = useState<SaveStatus>("idle");
 
-  // Os refs são a verdade para a fila de salvamento; o estado só alimenta a tela.
+  // Refs are the source of truth for the save queue; state only feeds the screen.
   const idRef = useRef<number | null>(null);
   const bodyRef = useRef("");
   const dirtyRef = useRef(false);
@@ -48,7 +48,7 @@ export function useNoteDraft(): NoteDraft {
     const job = queueRef.current.then(async () => {
       const id = idRef.current;
       const text = bodyRef.current;
-      // O front só cria a nota quando há texto (PRD §12, save_note).
+      // The UI only creates a note when there is text (PRD §12, save_note).
       if (id === null && text.trim() === "") {
         setStatus("idle");
         return true;
@@ -62,7 +62,7 @@ export function useNoteDraft(): NoteDraft {
         if (!dirtyRef.current) setStatus("saved");
         return true;
       } catch {
-        // Fica sujo: a próxima digitação (ou o próximo flush) tenta de novo.
+        // Stay dirty: the next keystroke (or flush) tries again.
         dirtyRef.current = true;
         setStatus("error");
         return false;
@@ -107,14 +107,14 @@ export function useNoteDraft(): NoteDraft {
 
   const open = useCallback(
     async (load: () => Promise<Note | null>) => {
-      // Repete enquanto houver digitação nova durante o salvamento; para se falhar,
-      // porque trocar de nota com o texto não salvo seria perdê-lo.
+      // Repeat while new typing arrives during the save; stop on failure,
+      // because switching notes with unsaved text would lose it.
       do {
         if (!(await flush())) return false;
       } while (dirtyRef.current);
       const edits = editsRef.current;
       const note = await load();
-      // Digitou enquanto carregava: o texto novo vale mais que a nota carregada.
+      // The user typed while loading: the new text wins over the loaded note.
       if (editsRef.current !== edits) return false;
       replace(note);
       return true;
@@ -122,7 +122,7 @@ export function useNoteDraft(): NoteDraft {
     [flush, replace],
   );
 
-  // Perder o foco salva na hora: é o que garante a nota salva antes de "Sair" na bandeja.
+  // Losing focus saves right away: this makes sure the note is saved before "Quit" in the tray.
   useEffect(() => {
     const onBlur = () => {
       void flush();

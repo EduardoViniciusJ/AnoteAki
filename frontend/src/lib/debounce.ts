@@ -1,13 +1,13 @@
 export interface Debounced<A extends unknown[]> {
   (...args: A): void;
-  /** Executa agora a chamada pendente, se houver. */
+  /** Runs the pending call now, if any. */
   flush: () => void;
-  /** Descarta a chamada pendente. */
+  /** Drops the pending call. */
   cancel: () => void;
   pending: () => boolean;
 }
 
-/** Adia `fn` até `waitMs` depois da última chamada; só os últimos argumentos valem. */
+/** Delays `fn` until `waitMs` after the last call; only the last arguments are used. */
 export function debounce<A extends unknown[]>(
   fn: (...args: A) => void,
   waitMs: number,

@@ -1,4 +1,4 @@
--- v1: schema do PRD §6 (Modelo de dados).
+-- v1: schema from PRD §6 (data model).
 
 CREATE TABLE notes (
   id          INTEGER PRIMARY KEY,
@@ -11,13 +11,13 @@ CREATE TABLE notes (
 );
 CREATE INDEX idx_notes_updated ON notes(updated_at DESC);
 
--- Índice de busca sem cópia do texto (content='notes'); sem acentos e sem caixa.
+-- Search index without a copy of the text (content='notes'); ignores accents and case.
 CREATE VIRTUAL TABLE notes_fts USING fts5(
   title, body, content='notes', content_rowid='id',
   tokenize='unicode61 remove_diacritics 2'
 );
 
--- Os triggers mantêm notes_fts em sincronia com notes.
+-- Triggers keep notes_fts in sync with notes.
 CREATE TRIGGER notes_fts_insert AFTER INSERT ON notes BEGIN
   INSERT INTO notes_fts(rowid, title, body) VALUES (new.id, new.title, new.body);
 END;
@@ -26,7 +26,7 @@ CREATE TRIGGER notes_fts_delete AFTER DELETE ON notes BEGIN
   INSERT INTO notes_fts(notes_fts, rowid, title, body) VALUES ('delete', old.id, old.title, old.body);
 END;
 
--- Só quando o texto muda: mover para a lixeira e restaurar não reindexam.
+-- Only when the text changes: trashing and restoring do not reindex.
 CREATE TRIGGER notes_fts_update AFTER UPDATE OF title, body ON notes BEGIN
   INSERT INTO notes_fts(notes_fts, rowid, title, body) VALUES ('delete', old.id, old.title, old.body);
   INSERT INTO notes_fts(rowid, title, body) VALUES (new.id, new.title, new.body);

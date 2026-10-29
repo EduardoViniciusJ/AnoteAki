@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { dayLabel, formatTime, formatWhen, groupByDay } from "./dates";
 
-// Datas montadas no fuso local e convertidas para ISO, como as que vêm do Rust:
-// os testes passam em qualquer fuso da máquina.
+// Dates built in local time and converted to ISO, like the ones from Rust:
+// the tests pass in any machine time zone.
 const at = (y: number, m: number, d: number, h = 12, min = 0) =>
   new Date(y, m - 1, d, h, min).toISOString();
 

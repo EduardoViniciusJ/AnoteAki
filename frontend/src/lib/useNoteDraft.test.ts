@@ -12,13 +12,13 @@ function note(id: number, body: string, deletedAt: string | null = null): Note {
   return { id, title: body, body, color: null, createdAt: now, updatedAt: now, deletedAt };
 }
 
-/** `save_note` falso: cria com ids 1, 2, 3… e devolve a nota salva. */
+/** Fake `save_note`: creates ids 1, 2, 3… and returns the saved note. */
 function fakeBackend() {
   let nextId = 1;
   saveMock.mockImplementation(async ({ id, body }) => note(id ?? nextId++, body));
 }
 
-/** Avança o debounce e deixa a fila de salvamento terminar. */
+/** Runs the debounce and lets the save queue finish. */
 async function waitDebounce() {
   await act(async () => {
     await vi.advanceTimersByTimeAsync(SAVE_DELAY_MS);

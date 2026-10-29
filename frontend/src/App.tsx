@@ -24,7 +24,7 @@ export function App() {
   const screenRef = useRef<Screen>("note");
   screenRef.current = screen;
 
-  // O Rust já fez show + set_focus; o rAF espera o WebView pintar antes de focar o editor.
+  // Rust already did show + set_focus; rAF waits for the WebView to paint before focusing.
   const focusEditor = useCallback(() => {
     requestAnimationFrame(() => focusAtEnd(editorRef.current));
   }, []);
@@ -34,7 +34,7 @@ export function App() {
       try {
         await open(load);
       } catch {
-        // Falha ao ler do banco: fica a nota atual, intacta.
+        // Could not read from the database: keep the current note as is.
       }
       setScreen("note");
       focusEditor();
@@ -42,7 +42,7 @@ export function App() {
     [open, focusEditor],
   );
 
-  // Ao iniciar e a cada vez que a janela aparece na tela Nota: a última nota ativa.
+  // On startup and every time the window shows on the Note screen: load the last active note.
   useEffect(() => {
     void showNote(getLastNote);
     const unlisten = onWindowShown(() => {
@@ -53,18 +53,18 @@ export function App() {
     };
   }, [showNote]);
 
-  // Consulta (e não evento): um evento emitido antes do listen() seria perdido.
+  // Query (not an event): an event emitted before listen() would be lost.
   useEffect(() => {
     let active = true;
     getShortcutStatus()
       .then(({ shortcut, registered }) => {
         if (!active || registered) return;
-        // A tela de Configurações (T52) ganha um botão de ação aqui.
+        // The Settings screen (T52) adds an action button here.
         setWarning(`O atalho ${shortcut} está em uso por outro app. Troque-o em Configurações.`);
         focusEditor();
       })
       .catch(() => {
-        // Sem o status não há aviso a mostrar; o app segue utilizável.
+        // Without the status there is no warning to show; the app still works.
       });
     return () => {
       active = false;
@@ -80,7 +80,7 @@ export function App() {
         }}
         onOpenNote={(id) => void showNote(() => getNote(id))}
         onNoteTrashed={(id) => {
-          // A nota aberta foi para a lixeira: salvar nela daria INVALID_INPUT.
+          // The open note went to the trash: saving it would return INVALID_INPUT.
           if (draft.noteId === id) replace(null);
         }}
       />
@@ -107,13 +107,13 @@ export function App() {
       }}
       onEscape={() => {
         hideWindow().catch(() => {
-          // Sem como esconder: a janela continua aberta, nada a perder.
+          // Could not hide: the window stays open, nothing is lost.
         });
       }}
       onNewNote={() => void showNote(async () => null)}
       onOpenHistory={() => {
-        // Salva antes de trocar de tela (PRD §12), para o histórico já listar o texto novo.
-        // Se falhar, o texto continua no rascunho e o status mostra o erro.
+        // Save before switching screens (PRD §12) so the history lists the new text.
+        // If it fails, the text stays in the draft and the status shows the error.
         void flush().then(() => setScreen("history"));
       }}
       warning={warning}

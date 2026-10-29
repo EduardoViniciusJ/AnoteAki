@@ -2,7 +2,7 @@ import "./IconButton.css";
 
 export type IconName = "plus" | "history" | "settings" | "close" | "back" | "trash" | "restore";
 
-// Ícones de traço 16×16 desenhados com paths.
+// 16×16 stroke icons drawn with paths.
 const PATHS: Record<IconName, string[]> = {
   plus: ["M8 3v10", "M3 8h10"],
   history: ["M7 2.5a4.5 4.5 0 1 0 0 9a4.5 4.5 0 1 0 0-9", "M10.3 10.3L13.5 13.5"],
@@ -18,10 +18,10 @@ const PATHS: Record<IconName, string[]> = {
 
 export interface IconButtonProps {
   icon: IconName;
-  /** Rótulo acessível (aria-label) e dica do mouse. */
+  /** Accessible label (aria-label) and mouse tooltip. */
   label: string;
   disabled?: boolean;
-  /** `-1` tira o botão do Tab quando há atalho de teclado equivalente (ex.: Delete na lista). */
+  /** `-1` removes the button from Tab order when a keyboard shortcut does the same (e.g. Delete in the list). */
   tabIndex?: number;
   onClick?: () => void;
 }
@@ -33,7 +33,7 @@ export function IconButton({ icon, label, disabled = false, tabIndex, onClick }:
       className="icon-button"
       aria-label={label}
       title={label}
-      // aria-disabled (e não `disabled`) mantém o botão no Tab, com o motivo na dica.
+      // aria-disabled (not `disabled`) keeps the button in Tab order, with the reason in the tooltip.
       aria-disabled={disabled}
       tabIndex={tabIndex}
       onClick={() => {

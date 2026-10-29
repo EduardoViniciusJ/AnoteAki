@@ -1,9 +1,9 @@
-//! Erro único devolvido pelos comandos. O front recebe `{ code, message }` (PRD §12).
-//! `message` é sempre um texto fixo de interface: nunca contém conteúdo de nota.
+//! Single error type returned by commands. The UI receives `{ code, message }` (PRD §12).
+//! `message` is always fixed UI text: it never contains note content.
 
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
-/// `SHORTCUT_UNAVAILABLE` entra junto com `set_setting` (T50).
+/// `SHORTCUT_UNAVAILABLE` comes with `set_setting` (T50).
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
     #[error("{0}")]
@@ -33,7 +33,7 @@ impl From<tauri::Error> for AppError {
     }
 }
 
-/// O erro do SQLite não vai para o front: a mensagem dele pode citar trechos da consulta.
+/// SQLite errors are not sent to the UI: their message can quote parts of the query.
 impl From<rusqlite::Error> for AppError {
     fn from(_: rusqlite::Error) -> Self {
         Self::Db("Falha no banco de dados.")

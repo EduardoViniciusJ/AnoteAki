@@ -30,7 +30,7 @@ export function NoteEditor({
   );
 }
 
-/** Foca o editor e põe o cursor no fim do texto. */
+/** Focuses the editor and puts the cursor at the end of the text. */
 export function focusAtEnd(editor: HTMLTextAreaElement | null) {
   if (!editor) return;
   editor.focus();

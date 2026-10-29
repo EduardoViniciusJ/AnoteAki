@@ -1,4 +1,4 @@
-// Única porta para o Rust: tipos e comandos do contrato (docs/PRD.md §12).
+// The only gateway to Rust: contract types and commands (docs/PRD.md §12).
 import { type InvokeArgs, invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
@@ -70,7 +70,7 @@ export function isAppError(value: unknown): value is AppError {
   return ERROR_CODES.includes(code as ErrorCode) && typeof message === "string";
 }
 
-/** Qualquer rejeição vira um `AppError`, para a UI tratar um formato só. */
+/** Any rejection becomes an `AppError`, so the UI handles a single shape. */
 export function toAppError(value: unknown): AppError {
   return isAppError(value) ? value : { code: "INTERNAL", message: "Falha inesperada." };
 }
@@ -83,7 +83,7 @@ async function call<T>(command: string, args?: InvokeArgs): Promise<T> {
   }
 }
 
-// Notas
+// Notes
 export const getLastNote = () => call<Note | null>("get_last_note");
 export const getNote = (id: number) => call<Note>("get_note", { id });
 export const saveNote = (input: { id: number | null; body: string; color?: StickerColor | null }) =>
@@ -96,14 +96,14 @@ export const deleteNote = (id: number) => call<void>("delete_note", { id });
 export const restoreNote = (id: number) => call<Note>("restore_note", { id });
 export const purgeNote = (id: number) => call<void>("purge_note", { id });
 
-// Configurações e janela
+// Settings and window
 export const getSettings = () => call<Settings>("get_settings");
 export const setSetting = <K extends keyof Settings>(key: K, value: Settings[K]) =>
   call<Settings>("set_setting", { key, value });
 export const hideWindow = () => call<void>("hide_window");
 export const getShortcutStatus = () => call<ShortcutStatus>("get_shortcut_status");
 
-// Eventos (Rust → UI)
+// Events (Rust → UI)
 export const onWindowShown = (
   handler: (payload: WindowShownPayload) => void,
 ): Promise<UnlistenFn> =>

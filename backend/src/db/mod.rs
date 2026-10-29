@@ -1,7 +1,7 @@
-//! Banco SQLite: abertura, migrações e consultas.
+//! SQLite database: opening, migrations and queries.
 //!
-//! Uma conexão só, atrás de um `Mutex` (PRD §6): o volume é baixo e o acesso serializado
-//! evita `SQLITE_BUSY` entre comandos.
+//! A single connection behind a `Mutex` (PRD §6): the load is low and serialized
+//! access avoids `SQLITE_BUSY` between commands.
 
 pub mod notes;
 
@@ -12,19 +12,19 @@ use rusqlite::Connection;
 
 use crate::error::AppError;
 
-/// Nome do arquivo dentro de `app_data_dir` (`%APPDATA%\com.anoteaki.desktop`).
+/// File name inside `app_data_dir` (`%APPDATA%\com.anoteaki.desktop`).
 pub const FILE_NAME: &str = "anoteaki.db";
 
-/// Migrações em ordem; o índice + 1 é o `PRAGMA user_version` depois de aplicá-la.
+/// Migrations in order; index + 1 is the `PRAGMA user_version` after applying it.
 const MIGRATIONS: &[&str] = &[include_str!("migrations/001_init.sql")];
 
-/// `PRAGMA user_version` depois de todas as migrações.
+/// `PRAGMA user_version` after all migrations.
 fn latest_version() -> i64 {
     MIGRATIONS.len() as i64
 }
 
-/// Estado gerenciado pelo Tauri. `None` = o banco não abriu; os comandos devolvem `DB_ERROR`
-/// em vez de o app fechar em silêncio (PRD §8).
+/// State managed by Tauri. `None` = the database did not open; commands return `DB_ERROR`
+/// instead of the app closing silently (PRD §8).
 pub struct Db(Mutex<Option<Connection>>);
 
 impl Db {
@@ -32,7 +32,7 @@ impl Db {
         Self(Mutex::new(conn))
     }
 
-    /// Executa `f` com a conexão.
+    /// Runs `f` with the connection.
     pub fn with<T>(
         &self,
         f: impl FnOnce(&mut Connection) -> Result<T, AppError>,
@@ -48,10 +48,10 @@ impl Db {
     }
 }
 
-/// Abre (ou cria) o banco em `path` e aplica as migrações pendentes.
+/// Opens (or creates) the database at `path` and applies pending migrations.
 pub fn open(path: &Path) -> Result<Connection, AppError> {
     let mut conn = Connection::open(path)?;
-    // WAL: escrita sem bloquear leitura e mais resistente a encerramento forçado.
+    // WAL: writes do not block reads and it handles forced shutdowns better.
     conn.pragma_update(None, "journal_mode", "WAL")?;
     conn.pragma_update(None, "synchronous", "NORMAL")?;
     conn.busy_timeout(std::time::Duration::from_secs(2))?;
@@ -59,7 +59,7 @@ pub fn open(path: &Path) -> Result<Connection, AppError> {
     Ok(conn)
 }
 
-/// Banco em memória já migrado, para os testes.
+/// In-memory database, already migrated, for tests.
 #[cfg(test)]
 pub fn open_in_memory() -> Connection {
     let mut conn = Connection::open_in_memory().unwrap();
@@ -67,11 +67,11 @@ pub fn open_in_memory() -> Connection {
     conn
 }
 
-/// Aplica, cada uma numa transação, as migrações acima do `user_version` atual.
+/// Applies the migrations above the current `user_version`, each in a transaction.
 pub fn migrate(conn: &mut Connection) -> Result<(), AppError> {
     let current: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
     if current > latest_version() {
-        // Banco criado por uma versão mais nova do app: não mexer.
+        // Database created by a newer app version: leave it alone.
         return Err(AppError::Db(
             "O banco de dados é de uma versão mais nova do AnoteAki.",
         ));
@@ -112,7 +112,7 @@ mod tests {
         let conn = open_in_memory();
         assert_eq!(user_version(&conn), latest_version());
         for name in ["notes", "notes_fts", "settings", "idx_notes_updated"] {
-            assert!(exists(&conn, name), "faltou {name}");
+            assert!(exists(&conn, name), "missing {name}");
         }
     }
 

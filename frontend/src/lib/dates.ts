@@ -1,7 +1,7 @@
-// Datas do histórico, sempre no fuso local do usuário (o Rust grava em UTC).
+// History dates, always in the user's local time zone (Rust stores UTC).
 
 export interface DayGroup<T> {
-  /** `AAAA-MM-DD` local, estável para usar como `key`. */
+  /** Local `YYYY-MM-DD`, stable to use as a `key`. */
   key: string;
   label: string;
   items: T[];
@@ -22,12 +22,12 @@ function dayKey(date: Date): string {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
-/** Dia anterior pelo calendário local (não "menos 24 h", que erra na troca de horário de verão). */
+/** Previous calendar day (not "minus 24 h", which is wrong on daylight saving changes). */
 function previousDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() - 1);
 }
 
-/** "Hoje", "Ontem" ou a data por extenso ("28 de outubro"; com o ano se não for o atual). */
+/** "Hoje", "Ontem" or the long date ("28 de outubro"; with the year if it is not the current one). */
 export function dayLabel(date: Date, now: Date): string {
   const key = dayKey(date);
   if (key === dayKey(now)) return "Hoje";
@@ -37,7 +37,7 @@ export function dayLabel(date: Date, now: Date): string {
     : dayYearFormat.format(date);
 }
 
-/** Agrupa por dia local de `updatedAt`, mantendo a ordem recebida (o Rust já ordena). */
+/** Groups by the local day of `updatedAt`, keeping the given order (Rust already sorts). */
 export function groupByDay<T extends { updatedAt: string }>(items: T[], now: Date): DayGroup<T>[] {
   const groups: DayGroup<T>[] = [];
   for (const item of items) {
@@ -58,7 +58,7 @@ export function formatTime(iso: string): string {
   return timeFormat.format(new Date(iso));
 }
 
-/** Para listas sem grupo de dia: a hora se for hoje, senão "28/10". */
+/** For lists without day groups: the time if today, otherwise "28/10". */
 export function formatWhen(iso: string, now: Date): string {
   const date = new Date(iso);
   return dayKey(date) === dayKey(now) ? timeFormat.format(date) : shortDateFormat.format(date);

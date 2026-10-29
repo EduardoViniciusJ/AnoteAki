@@ -12,9 +12,9 @@ export interface NoteListItemAction {
 
 export interface NoteListItemProps {
   note: NoteSummary;
-  /** Horário ou data já formatados. */
+  /** Time or date, already formatted. */
   when: string;
-  /** Roving tabindex: só o item selecionado fica no Tab. */
+  /** Roving tabindex: only the selected item is in Tab order. */
   selected: boolean;
   onOpen: () => void;
   onFocus?: FocusEventHandler<HTMLButtonElement>;
@@ -22,7 +22,7 @@ export interface NoteListItemProps {
   ref?: Ref<HTMLButtonElement>;
 }
 
-/** Linha do histórico. Título e preview entram como texto JSX (o React escapa). */
+/** History row. Title and preview are rendered as JSX text (React escapes them). */
 export function NoteListItem({
   note,
   when,
@@ -51,7 +51,7 @@ export function NoteListItem({
       <span className="note-list-item__actions">
         {actions.map((action) => (
           <span key={action.label} className={action.danger ? "note-list-item__danger" : undefined}>
-            {/* Fora do Tab: Delete e Enter fazem o mesmo pelo teclado. */}
+            {/* Not in Tab order: Delete and Enter do the same from the keyboard. */}
             <IconButton
               icon={action.icon}
               label={action.label}

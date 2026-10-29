@@ -8,8 +8,8 @@ mod window;
 use rusqlite::Connection;
 use tauri::{AppHandle, Manager, WindowEvent};
 
-/// Abre o banco em `%APPDATA%\com.anoteaki.desktop`. Se falhar, o app abre mesmo assim
-/// e os comandos de nota devolvem `DB_ERROR`, que a UI mostra (PRD §8).
+/// Opens the database in `%APPDATA%\com.anoteaki.desktop`. If it fails, the app still starts
+/// and note commands return `DB_ERROR`, which the UI shows (PRD §8).
 fn open_database(app: &AppHandle) -> Option<Connection> {
     let dir = app.path().app_data_dir().ok()?;
     let opened = std::fs::create_dir_all(&dir)
@@ -21,7 +21,7 @@ fn open_database(app: &AppHandle) -> Option<Connection> {
     opened
 }
 
-/// Monta e executa o app Tauri.
+/// Builds and runs the Tauri app.
 pub fn run() -> tauri::Result<()> {
     tauri::Builder::default()
         .plugin(shortcut::plugin())
@@ -31,7 +31,7 @@ pub fn run() -> tauri::Result<()> {
             Ok(())
         })
         .on_window_event(|window, event| {
-            // Alt+F4 / fechar só esconde; o processo vive até "Sair" na bandeja (T40).
+            // Alt+F4 / close only hides; the process lives until "Quit" in the tray (T40).
             if let WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 if window.hide().is_err() {

@@ -11,10 +11,10 @@ export interface SaveStatusProps {
   status: Status;
 }
 
-/** Indicador discreto no rodapé da nota. */
+/** Small indicator at the bottom of the note. */
 export function SaveStatus({ status }: SaveStatusProps) {
   return (
-    // aria-live sem role="status": o leitor de tela anuncia, mas sem competir com o Toast.
+    // aria-live without role="status": screen readers announce it without competing with the Toast.
     <p className={`save-status save-status--${status}`} aria-live="polite">
       {status === "idle" ? "" : LABELS[status]}
     </p>
