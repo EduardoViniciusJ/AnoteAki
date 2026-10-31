@@ -263,7 +263,7 @@ Não há evento de falha do atalho na inicialização: um evento emitido antes d
 - Os post-its com nota ficam na tabela `open_windows` (posição e tamanho, salvos ao perder o foco e ao esconder) e voltam ao reiniciar. Um post-it em branco não é salvo.
 - Criar janela só em comando `async`: em comando síncrono o Windows trava (wry #583).
 - Fechar o último post-it não encerra o processo (`RunEvent::ExitRequested` sem código é cancelado); o atalho abre um novo.
-- `hideOnBlur = true` → evento `Focused(false)` da janela → `hide()`.
+- `hideOnBlur = true` → evento `Focused(false)` da janela → esconde todos os post-its, a não ser que o foco tenha ido para outro post-it (espera 150 ms para o foco chegar).
 - Fechar a janela (Alt+F4) **esconde todos**, como o Esc; só "Sair" na bandeja encerra o processo.
 
 ### Responsabilidade do front em relação a salvamento

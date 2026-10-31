@@ -30,6 +30,13 @@ rusqlite = { version = "0.41.1", default-features = false, features = ["bundled"
 # A second launch only shows the running app instead of starting another one (T41).
 tauri-plugin-single-instance = "2.5.5"
 
+[target.'cfg(windows)'.dependencies]
+# Turns off the WebView2 browser keys (Ctrl+F find bar, Ctrl+P, F5...).
+# Same versions Tauri/wry already use, so the COM types match.
+webview2-com = "0.39.1"
+# `Interface::cast` for the WebView2 COM settings above.
+windows-core = "0.62.2"
+
 [features]
 custom-protocol = ["tauri/custom-protocol"]
 

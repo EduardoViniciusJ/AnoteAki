@@ -15,6 +15,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "delete_note",
             "restore_note",
             "purge_note",
+            "get_settings",
+            "set_setting",
         ]),
     ))?;
     Ok(())

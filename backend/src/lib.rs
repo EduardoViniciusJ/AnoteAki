@@ -1,6 +1,7 @@
 mod commands;
 mod db;
 mod error;
+mod settings;
 mod shortcut;
 mod tray;
 mod window;
@@ -41,13 +42,17 @@ pub fn run() -> tauri::Result<()> {
         }))
         .plugin(shortcut::plugin())
         .setup(|app| {
-            app.manage(Db::new(open_database(app.handle())));
+            let db = Db::new(open_database(app.handle()));
+            // Without a database the defaults apply.
+            let saved = db.with(|conn| db::settings::load(conn)).unwrap_or_default();
+            app.manage(db);
             app.manage(Windows::default());
+            app.manage(settings::HideOnBlur::new(saved.hide_on_blur));
             let handle = app.handle();
             if window::restore(handle, &handle.state::<Db>(), &handle.state::<Windows>()).is_err() {
                 eprintln!("AnoteAki: não foi possível reabrir as notas.");
             }
-            shortcut::register(handle);
+            shortcut::register(handle, &saved.shortcut);
             tray::create(handle)?;
             Ok(())
         })
@@ -71,6 +76,7 @@ pub fn run() -> tauri::Result<()> {
                     if let Some(note) = app.get_webview_window(window.label()) {
                         window::save_bounds(&app.state::<Db>(), &note);
                     }
+                    settings::on_blur(app);
                 }
                 _ => {}
             }
@@ -89,6 +95,8 @@ pub fn run() -> tauri::Result<()> {
             commands::notes::delete_note,
             commands::notes::restore_note,
             commands::notes::purge_note,
+            commands::settings::get_settings,
+            commands::settings::set_setting,
         ])
         .build(tauri::generate_context!())?
         .run(|_app, event| {

@@ -6,7 +6,7 @@ use tauri::{AppHandle, State, WebviewWindow};
 use crate::db::Db;
 use crate::db::notes;
 use crate::error::AppError;
-use crate::shortcut::ShortcutStatus;
+use crate::shortcut::{CurrentShortcut, ShortcutStatus};
 use crate::window::{self, WindowState, Windows};
 
 /// Hides every sticky note (used by `Esc`).
@@ -15,10 +15,12 @@ pub async fn hide_window(app: AppHandle, db: State<'_, Db>) -> Result<(), AppErr
     window::hide_all(&app, &db).map_err(AppError::from)
 }
 
-/// Current shortcut and whether the global registration worked on startup.
+/// Current shortcut and whether its global registration worked.
 #[tauri::command]
-pub fn get_shortcut_status(status: State<'_, ShortcutStatus>) -> ShortcutStatus {
-    status.inner().clone()
+pub fn get_shortcut_status(
+    current: State<'_, CurrentShortcut>,
+) -> Result<ShortcutStatus, AppError> {
+    current.status()
 }
 
 /// Which note, color and opacity the calling window shows.
