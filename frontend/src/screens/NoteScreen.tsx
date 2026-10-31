@@ -1,6 +1,5 @@
 import type { Ref } from "react";
 import { ColorMenu } from "../components/ColorMenu";
-import { CopyMenu } from "../components/CopyMenu";
 import { IconButton } from "../components/IconButton";
 import { NoteEditor } from "../components/NoteEditor";
 import { SaveStatus } from "../components/SaveStatus";
@@ -109,7 +108,20 @@ export function NoteScreen({
           </span>
         )}
         <ColorMenu look={look} onChange={onLookChange} disabled={readOnly} />
-        <CopyMenu onCopyText={onCopy} onCopyMarkdown={onCopyMarkdown} disabled={empty} />
+        <IconButton
+          icon="copy"
+          label={empty ? "Copiar texto (nota vazia)" : "Copiar texto (Ctrl+Shift+C)"}
+          disabled={empty}
+          onClick={onCopy}
+        />
+        <IconButton
+          icon="markdown"
+          label={
+            empty ? "Copiar como Markdown (nota vazia)" : "Copiar como Markdown (Ctrl+Shift+M)"
+          }
+          disabled={empty}
+          onClick={onCopyMarkdown}
+        />
         <IconButton icon="plus" label="Nova nota (Ctrl+N)" onClick={onNewNote} />
         <IconButton icon="history" label="Histórico (Ctrl+H)" onClick={onOpenHistory} />
         {/* Disabled until the Settings screen (T52). */}

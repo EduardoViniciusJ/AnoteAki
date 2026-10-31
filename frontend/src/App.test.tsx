@@ -219,9 +219,8 @@ describe("App", () => {
     await renderApp();
     fireEvent.change(title(), { target: { value: "Compras" } });
     fireEvent.change(editor(), { target: { value: "leite" } });
-    fireEvent.click(screen.getByRole("button", { name: "Copiar nota" }));
     await act(async () => {
-      fireEvent.click(screen.getByRole("menuitem", { name: /Copiar texto/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Copiar texto (Ctrl+Shift+C)" }));
     });
     expect(writeText).toHaveBeenCalledWith("Compras\n\nleite");
     expect(screen.getByRole("status").textContent).toContain("Copiado");
@@ -233,9 +232,8 @@ describe("App", () => {
     await renderApp();
     fireEvent.change(title(), { target: { value: "Compras" } });
     fireEvent.change(editor(), { target: { value: "leite" } });
-    fireEvent.click(screen.getByRole("button", { name: "Copiar nota" }));
     await act(async () => {
-      fireEvent.click(screen.getByRole("menuitem", { name: /Copiar como Markdown/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Copiar como Markdown (Ctrl+Shift+M)" }));
     });
     expect(writeText).toHaveBeenCalledWith("# Compras\n\nleite");
   });
@@ -245,9 +243,8 @@ describe("App", () => {
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
     await renderApp();
     fireEvent.change(editor(), { target: { value: "leite" } });
-    fireEvent.click(screen.getByRole("button", { name: "Copiar nota" }));
     await act(async () => {
-      fireEvent.click(screen.getByRole("menuitem", { name: /Copiar texto/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Copiar texto (Ctrl+Shift+C)" }));
     });
     expect(screen.getByRole("status").textContent).toContain("Não foi possível copiar");
   });

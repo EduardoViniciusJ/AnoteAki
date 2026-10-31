@@ -109,14 +109,12 @@ describe("NoteScreen", () => {
     expect(props.onDismissWarning).toHaveBeenCalledOnce();
   });
 
-  it("o menu copiar oferece texto e Markdown", () => {
+  it("os botões copiar são independentes", () => {
     const props = renderScreen({ body: "leite" });
-    fireEvent.click(screen.getByRole("button", { name: "Copiar nota" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: /Copiar texto/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Copiar texto (Ctrl+Shift+C)" }));
     expect(props.onCopy).toHaveBeenCalledOnce();
-    expect(screen.queryByRole("menu")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Copiar nota" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: /Copiar como Markdown/ }));
+    expect(props.onCopyMarkdown).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Copiar como Markdown (Ctrl+Shift+M)" }));
     expect(props.onCopyMarkdown).toHaveBeenCalledOnce();
   });
 
@@ -132,10 +130,11 @@ describe("NoteScreen", () => {
 
   it("nota vazia não copia", () => {
     const props = renderScreen({ heading: " ", body: "\n" });
-    const button = screen.getByRole("button", { name: "Copiar nota (nota vazia)" });
-    expect(button.getAttribute("aria-disabled")).toBe("true");
-    fireEvent.click(button);
-    expect(screen.queryByRole("menu")).toBeNull();
+    for (const name of ["Copiar texto (nota vazia)", "Copiar como Markdown (nota vazia)"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button.getAttribute("aria-disabled")).toBe("true");
+      fireEvent.click(button);
+    }
     fireEvent.keyDown(editor(), { key: "C", ctrlKey: true, shiftKey: true });
     fireEvent.keyDown(editor(), { key: "M", ctrlKey: true, shiftKey: true });
     expect(props.onCopy).not.toHaveBeenCalled();
