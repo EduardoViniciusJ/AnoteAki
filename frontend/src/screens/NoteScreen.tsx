@@ -58,7 +58,7 @@ export function NoteScreen({
 }: NoteScreenProps) {
   return (
     <section
-      className="note-screen"
+      className="note-screen screen-enter"
       aria-label="Nota"
       onKeyDown={(event) => {
         if (event.defaultPrevented) return;

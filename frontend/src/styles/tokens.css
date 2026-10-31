@@ -1,24 +1,29 @@
 /* Tokens from DESIGN-GUIDELINES. The only source of colors, spacing and radii.
-   Theme switching (system/light/dark) and the Inter font come in T51. */
+   Each color is light-dark(light, dark): `color-scheme` picks the side.
+   theme "system" follows Windows (prefers-color-scheme); data-theme forces one. */
 :root {
-  --ink: #1f1e1c;
-  --ink-muted: #5c5a55;
-  --accent: #2f55c8;
-  --danger: #b3261e;
+  color-scheme: light dark;
+
+  --ink: light-dark(#1f1e1c, #f3f1ec);
+  --ink-muted: light-dark(#5c5a55, #b9b5ad);
+  --accent: light-dark(#2f55c8, #8db2ff);
+  --danger: light-dark(#b3261e, #ffb4ab);
   --sticker: var(--sticker-yellow);
   --sticker-opacity: 100%;
-  --surface-2: rgb(0 0 0 / 0.05);
-  --border: rgb(0 0 0 / 0.12);
-  --shadow: 0 6px 20px rgb(0 0 0 / 0.14), 0 1px 3px rgb(0 0 0 / 0.08);
+  --surface-2: light-dark(rgb(0 0 0 / 0.05), rgb(255 255 255 / 0.06));
+  --border: light-dark(rgb(0 0 0 / 0.12), rgb(255 255 255 / 0.12));
+  --shadow:
+    0 6px 20px light-dark(rgb(0 0 0 / 0.14), rgb(0 0 0 / 0.45)),
+    0 1px 3px light-dark(rgb(0 0 0 / 0.08), transparent);
 
-  --sticker-yellow: #fff4b8;
-  --sticker-pink: #ffdde5;
-  --sticker-blue: #d9ecff;
-  --sticker-green: #ddf3d5;
-  --sticker-lilac: #e9e0ff;
-  --sticker-paper: #f4f2ee;
+  --sticker-yellow: light-dark(#fff4b8, #3a3522);
+  --sticker-pink: light-dark(#ffdde5, #3d2a31);
+  --sticker-blue: light-dark(#d9ecff, #22313e);
+  --sticker-green: light-dark(#ddf3d5, #25342a);
+  --sticker-lilac: light-dark(#e9e0ff, #302a42);
+  --sticker-paper: light-dark(#f4f2ee, #2a2927);
 
-  --font-ui: "Segoe UI", system-ui, sans-serif;
+  --font-ui: "Inter Variable", "Segoe UI", system-ui, sans-serif;
   --text-xs: 12px;
   --text-sm: 14px;
   --text-md: 16px;
@@ -35,22 +40,15 @@
   --radius-window: 8px;
   --toolbar-height: 32px;
   --icon-button: 28px;
+
+  --motion-open: 120ms ease-out;
+  --motion-screen: 120ms ease-out;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 :root[data-theme="dark"] {
-  --ink: #f3f1ec;
-  --ink-muted: #b9b5ad;
-  --accent: #8db2ff;
-  --danger: #ffb4ab;
-  --sticker: var(--sticker-paper);
-  --surface-2: rgb(255 255 255 / 0.06);
-  --border: rgb(255 255 255 / 0.12);
-  --shadow: 0 6px 20px rgb(0 0 0 / 0.45);
-
-  --sticker-yellow: #3a3522;
-  --sticker-pink: #3d2a31;
-  --sticker-blue: #22313e;
-  --sticker-green: #25342a;
-  --sticker-lilac: #302a42;
-  --sticker-paper: #2a2927;
+  color-scheme: dark;
 }
