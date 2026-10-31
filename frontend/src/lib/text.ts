@@ -6,3 +6,11 @@ export function deriveTitle(body: string): string {
   }
   return "";
 }
+
+/** The whole note as plain text: the title, a blank line, then the body. */
+export function noteAsText(heading: string, body: string): string {
+  const title = heading.trim();
+  const text = body.trim();
+  if (!title) return text;
+  return text ? `${title}\n\n${text}` : title;
+}

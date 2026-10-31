@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveTitle } from "./text";
+import { deriveTitle, noteAsText } from "./text";
 
 describe("deriveTitle", () => {
   it("usa a primeira linha não vazia", () => {
@@ -12,5 +12,23 @@ describe("deriveTitle", () => {
 
   it("retorna vazio para nota em branco", () => {
     expect(deriveTitle("  \n\t")).toBe("");
+  });
+});
+
+describe("noteAsText", () => {
+  it("junta título e texto com uma linha em branco", () => {
+    expect(noteAsText(" Compras ", "leite\npão\n")).toBe("Compras\n\nleite\npão");
+  });
+
+  it("sem título, copia só o texto", () => {
+    expect(noteAsText("", "  ideia  ")).toBe("ideia");
+  });
+
+  it("só com título, copia o título", () => {
+    expect(noteAsText("Ligar", "  ")).toBe("Ligar");
+  });
+
+  it("nota em branco vira texto vazio", () => {
+    expect(noteAsText(" ", "\n")).toBe("");
   });
 });

@@ -14,6 +14,7 @@ function renderScreen(props: Partial<NoteScreenProps> = {}) {
     onEscape: vi.fn(),
     onNewNote: vi.fn(),
     onClose: vi.fn(),
+    onCopy: vi.fn(),
     onOpenHistory: vi.fn(),
     onTitleSubmit: vi.fn(),
     warning: null,
@@ -105,5 +106,33 @@ describe("NoteScreen", () => {
     expect(screen.getByRole("status").textContent).toContain("Atalho em uso");
     fireEvent.click(screen.getByRole("button", { name: "Fechar aviso" }));
     expect(props.onDismissWarning).toHaveBeenCalledOnce();
+  });
+
+  it("o botão copiar copia a nota", () => {
+    const props = renderScreen({ body: "leite" });
+    fireEvent.click(screen.getByRole("button", { name: "Copiar nota (Ctrl+Shift+C)" }));
+    expect(props.onCopy).toHaveBeenCalledOnce();
+  });
+
+  it("Ctrl+Shift+C copia; Ctrl+C sozinho fica com o texto selecionado", () => {
+    const props = renderScreen({ heading: "Compras" });
+    fireEvent.keyDown(editor(), { key: "c", ctrlKey: true });
+    expect(props.onCopy).not.toHaveBeenCalled();
+    fireEvent.keyDown(editor(), { key: "C", ctrlKey: true, shiftKey: true });
+    expect(props.onCopy).toHaveBeenCalledOnce();
+  });
+
+  it("nota vazia não copia", () => {
+    const props = renderScreen({ heading: " ", body: "\n" });
+    const button = screen.getByRole("button", { name: "Copiar nota (nota vazia)" });
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(button);
+    fireEvent.keyDown(editor(), { key: "C", ctrlKey: true, shiftKey: true });
+    expect(props.onCopy).not.toHaveBeenCalled();
+  });
+
+  it("mostra a confirmação", () => {
+    renderScreen({ body: "x", notice: "Copiado" });
+    expect(screen.getByRole("status").textContent).toContain("Copiado");
   });
 });

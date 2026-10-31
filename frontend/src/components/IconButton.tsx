@@ -8,7 +8,8 @@ export type IconName =
   | "back"
   | "trash"
   | "restore"
-  | "palette";
+  | "palette"
+  | "copy";
 
 // 16×16 stroke icons drawn with paths.
 const PATHS: Record<IconName, string[]> = {
@@ -26,6 +27,7 @@ const PATHS: Record<IconName, string[]> = {
     "M8 2a6 6 0 1 0 0 12c1 0 1.3-.8.9-1.6-.5-.9.1-1.9 1.1-1.9H12a2 2 0 0 0 2-2A6 6 0 0 0 8 2",
     "M5 7.5h.01M7 5h.01M10 5.5h.01",
   ],
+  copy: ["M5.5 5.5h7v8h-7z", "M3.5 10.5v-8h7"],
 };
 
 export interface IconButtonProps {
