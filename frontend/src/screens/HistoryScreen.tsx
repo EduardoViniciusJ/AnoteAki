@@ -651,7 +651,7 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
       </div>
       <div className="history-screen__filters">
         {scope === "active" && (
-          <div className="history-screen__colors" role="group" aria-label="Filtrar por cor">
+          <fieldset className="history-screen__colors" aria-label="Filtrar por cor">
             {(Object.keys(COLOR_NAMES) as StickerColor[]).map((color) => (
               <button
                 key={color}
@@ -665,7 +665,7 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
                 onClick={() => setColorFilter((prev) => (prev === color ? null : color))}
               />
             ))}
-          </div>
+          </fieldset>
         )}
         <select
           className="history-screen__sort"

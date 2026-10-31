@@ -85,6 +85,10 @@
 .history-screen__colors {
   display: flex;
   gap: var(--space-1);
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+  border: 0;
 }
 
 .history-screen__color {
