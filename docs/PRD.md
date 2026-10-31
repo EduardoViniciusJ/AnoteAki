@@ -95,6 +95,7 @@ CREATE TABLE notes (
   title       TEXT NOT NULL DEFAULT '',
   body        TEXT NOT NULL DEFAULT '',
   color       TEXT NULL,                 -- StickerColor ou NULL
+  pinned      INTEGER NOT NULL DEFAULT 0, -- fixada no topo do histórico (v4)
   created_at  TEXT NOT NULL,
   updated_at  TEXT NOT NULL,
   deleted_at  TEXT NULL
@@ -180,6 +181,7 @@ interface Note {
   body: string;
   color: StickerColor | null;  // null = amarelo
   opacity: StickerOpacity;     // padrão 100
+  pinned: boolean;             // fixada no topo do histórico
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;    // não nulo = na lixeira
@@ -190,9 +192,13 @@ interface NoteSummary {
   title: string;
   preview: string;        // corpo (sem a 1ª linha quando não há heading), espaços colapsados, máx. 140 caracteres
   color: StickerColor | null;
+  pinned: boolean;
   updatedAt: string;
   deletedAt: string | null;
 }
+
+// Ordem do histórico. As fixadas vêm sempre primeiro em `active`.
+type NoteSort = "updated" | "created" | "title";
 
 // O que um post-it (janela) mostra. Cada janela é um post-it com label "note-N".
 interface WindowState {
@@ -234,11 +240,13 @@ interface AppError { code: ErrorCode; message: string } // message NUNCA contém
 | `get_last_note` | — | `Note \| null` | A nota **ativa** (`deletedAt` nulo) com maior `updatedAt`. `null` se não houver nenhuma. |
 | `get_note` | `{ id }` | `Note` | Inclui notas na lixeira. `NOT_FOUND` se não existir. |
 | `save_note` | `{ id: number \| null, body: string, heading?: string, color?: StickerColor, opacity?: StickerOpacity }` | `Note` | `id` nulo → cria (o front só chama com título ou corpo não vazio) e liga a nota ao post-it que chamou, para ele voltar ao reiniciar. `id` existente → atualiza; campo ausente ou `null` mantém o valor atual. Sem mudança, o `updatedAt` não muda. Salvar uma nota na lixeira → `INVALID_INPUT`. |
-| `list_notes` | `{ scope: "active" \| "trash", limit?, offset? }` | `NoteSummary[]` | Ordem: `updatedAt` desc. `active` **exclui notas de corpo vazio**. |
+| `list_notes` | `{ scope: "active" \| "trash", color?: StickerColor, sort?: NoteSort, limit?, offset? }` | `NoteSummary[]` | Ordem: `sort` (padrão `updated` = `updatedAt` desc; `title` = A→Z sem diferenciar maiúsculas); em `active`, as fixadas vêm sempre primeiro. `color` filtra só `active` (ignorado na lixeira); `yellow` também pega `color` nulo (o padrão). Cor ou ordem desconhecidas → `INVALID_INPUT`. `active` **exclui notas de corpo vazio**. |
 | `search_notes` | `{ query, limit? }` | `NoteSummary[]` | FTS5 em title+body, só ativas, ordem por relevância (`bm25`). Sem diferenciar acentos nem maiúsculas. Cada termo vira uma frase escapada entre aspas, com prefixo `*` no último (o usuário nunca injeta sintaxe FTS). |
 | `delete_note` | `{ id }` | `void` | Soft delete (`deletedAt = now`). Fecha o post-it dessa nota; se for o post-it que chamou, ele fica aberto, em branco. |
 | `restore_note` | `{ id }` | `Note` | `deletedAt = null`. |
 | `purge_note` | `{ id }` | `void` | Remoção definitiva; só para notas na lixeira (senão `INVALID_INPUT`). |
+| `set_note_pinned` | `{ id, pinned: boolean }` | `Note` | Fixa/desafixa no topo do histórico, **sem mudar o `updatedAt`**. Nota na lixeira → `INVALID_INPUT`. |
+| `empty_trash` | — | `void` | Remove definitivamente todas as notas da lixeira, numa operação só. |
 
 ### Comandos: configurações e janela
 | Comando | Args | Retorno | Regras |

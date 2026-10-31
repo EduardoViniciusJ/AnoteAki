@@ -2,37 +2,75 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   deleteNote,
+  emptyTrash,
+  getNote,
   listNotes,
+  type Note,
   type NoteSummary,
   purgeNote,
   restoreNote,
   searchNotes,
+  setNotePinned,
 } from "../lib/api";
 import {
   HistoryScreen,
   type HistoryScreenProps,
   PAGE_SIZE,
+  PREVIEW_DELAY_MS,
   SEARCH_DELAY_MS,
 } from "./HistoryScreen";
 
 vi.mock("../lib/api", () => ({
   deleteNote: vi.fn(),
+  emptyTrash: vi.fn(),
+  getNote: vi.fn(),
   listNotes: vi.fn(),
   purgeNote: vi.fn(),
   restoreNote: vi.fn(),
   searchNotes: vi.fn(),
+  setNotePinned: vi.fn(),
 }));
 
-function summary(id: number, title: string, deletedAt: string | null = null): NoteSummary {
+function summary(
+  id: number,
+  title: string,
+  deletedAt: string | null = null,
+  pinned = false,
+): NoteSummary {
   return {
     id,
     title,
     preview: `preview ${id}`,
     color: null,
+    pinned,
     updatedAt: new Date().toISOString(),
     deletedAt,
   };
 }
+
+function fullNote(id: number, heading: string, body: string): Note {
+  return {
+    id,
+    title: heading || body,
+    heading,
+    body,
+    color: null,
+    opacity: 100,
+    pinned: false,
+    createdAt: "",
+    updatedAt: "",
+    deletedAt: null,
+  };
+}
+
+/** First `list_notes` call of a screen: default filters. */
+const firstPage = {
+  scope: "active",
+  color: undefined,
+  sort: "updated",
+  limit: PAGE_SIZE,
+  offset: 0,
+};
 
 async function renderScreen(props: Partial<HistoryScreenProps> = {}) {
   const all: HistoryScreenProps = {
@@ -54,6 +92,9 @@ beforeEach(() => {
   vi.mocked(searchNotes).mockResolvedValue([]);
   vi.mocked(deleteNote).mockResolvedValue(undefined);
   vi.mocked(purgeNote).mockResolvedValue(undefined);
+  vi.mocked(getNote).mockResolvedValue(fullNote(1, "", "corpo da prévia"));
+  vi.mocked(setNotePinned).mockResolvedValue(fullNote(1, "", "x"));
+  vi.mocked(emptyTrash).mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -65,7 +106,7 @@ describe("HistoryScreen", () => {
   it("foca a busca e lista as notas ativas agrupadas por dia", async () => {
     await renderScreen();
     expect(document.activeElement).toBe(search());
-    expect(listNotes).toHaveBeenCalledWith({ scope: "active", limit: PAGE_SIZE, offset: 0 });
+    expect(listNotes).toHaveBeenCalledWith(firstPage);
     const today = screen.getByRole("region", { name: "Hoje" });
     expect(within(today).getAllByRole("listitem")).toHaveLength(2);
   });
@@ -130,17 +171,7 @@ describe("HistoryScreen", () => {
   });
 
   it("Delete manda para a lixeira, avisa a tela Nota e oferece Desfazer", async () => {
-    vi.mocked(restoreNote).mockResolvedValue({
-      id: 1,
-      title: "Alfa",
-      heading: "",
-      body: "Alfa",
-      color: null,
-      opacity: 100,
-      createdAt: "",
-      updatedAt: "",
-      deletedAt: null,
-    });
+    vi.mocked(restoreNote).mockResolvedValue(fullNote(1, "", "Alfa"));
     const props = await renderScreen();
     fireEvent.keyDown(search(), { key: "ArrowDown" });
     await act(async () => {
@@ -173,22 +204,18 @@ describe("HistoryScreen", () => {
     vi.mocked(listNotes).mockImplementation(async ({ scope }) =>
       scope === "trash" ? [summary(5, "Velha", "x"), summary(6, "Antiga", "x")] : [],
     );
-    vi.mocked(restoreNote).mockResolvedValue({
-      id: 5,
-      title: "Velha",
-      heading: "",
-      body: "Velha",
-      color: null,
-      opacity: 100,
-      createdAt: "",
-      updatedAt: "",
-      deletedAt: null,
-    });
+    vi.mocked(restoreNote).mockResolvedValue(fullNote(5, "", "Velha"));
     await renderScreen();
     await act(async () => {
       fireEvent.click(screen.getByRole("tab", { name: "Lixeira" }));
     });
-    expect(listNotes).toHaveBeenLastCalledWith({ scope: "trash", limit: PAGE_SIZE, offset: 0 });
+    expect(listNotes).toHaveBeenLastCalledWith({
+      scope: "trash",
+      color: undefined,
+      sort: "updated",
+      limit: PAGE_SIZE,
+      offset: 0,
+    });
     expect(search().disabled).toBe(true);
 
     await act(async () => {
@@ -234,6 +261,8 @@ describe("HistoryScreen", () => {
     });
     expect(listNotes).toHaveBeenLastCalledWith({
       scope: "active",
+      color: undefined,
+      sort: "updated",
       limit: PAGE_SIZE,
       offset: PAGE_SIZE,
     });
@@ -248,5 +277,139 @@ describe("HistoryScreen", () => {
       fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
     });
     expect(item("Alfa")).toBeTruthy();
+  });
+
+  it("notas fixadas ficam no grupo Fixadas; o botão fixa e desfixa", async () => {
+    vi.mocked(listNotes).mockResolvedValue([summary(1, "Alfa", null, true), summary(2, "Beta")]);
+    await renderScreen();
+    const pinnedGroup = screen.getByRole("region", { name: "Fixadas" });
+    expect(within(pinnedGroup).getByRole("button", { name: /Alfa/ })).toBeTruthy();
+    expect(
+      within(screen.getByRole("region", { name: "Hoje" })).queryByRole("button", { name: /Alfa/ }),
+    ).toBeNull();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Fixar (P)" }));
+    });
+    expect(setNotePinned).toHaveBeenCalledWith(2, true);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Desafixar (P)" }));
+    });
+    expect(setNotePinned).toHaveBeenCalledWith(1, false);
+  });
+
+  it("copiar pelo item põe título + texto na área de transferência", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    vi.mocked(getNote).mockResolvedValue(fullNote(1, "Compras", "leite"));
+    await renderScreen();
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole("button", { name: "Copiar (C)" })[0] as HTMLElement);
+    });
+    expect(getNote).toHaveBeenCalledWith(1);
+    expect(writeText).toHaveBeenCalledWith("Compras\n\nleite");
+    expect(screen.getByRole("status").textContent).toContain("Copiado");
+  });
+
+  it("filtro por cor refaz a lista e desliga ao clicar de novo", async () => {
+    await renderScreen();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Filtrar por amarelo" }));
+    });
+    expect(listNotes).toHaveBeenLastCalledWith({ ...firstPage, color: "yellow" });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Filtrar por amarelo" }));
+    });
+    expect(listNotes).toHaveBeenLastCalledWith(firstPage);
+  });
+
+  it("ordenar por título lista plana, sem grupos por dia", async () => {
+    await renderScreen();
+    await act(async () => {
+      fireEvent.change(screen.getByRole("combobox", { name: "Ordenar" }), {
+        target: { value: "title" },
+      });
+    });
+    expect(listNotes).toHaveBeenLastCalledWith({ ...firstPage, sort: "title" });
+    expect(screen.queryByRole("region", { name: "Hoje" })).toBeNull();
+    expect(item("Alfa")).toBeTruthy();
+  });
+
+  it("Ctrl+clique seleciona várias e a barra exclui todas", async () => {
+    const props = await renderScreen();
+    fireEvent.click(item("Alfa"), { ctrlKey: true });
+    fireEvent.click(item("Beta"), { ctrlKey: true });
+    expect(props.onOpenNote).not.toHaveBeenCalled();
+    const bar = screen.getByRole("toolbar", { name: "Notas selecionadas" });
+    expect(bar.textContent).toContain("2 selecionadas");
+    await act(async () => {
+      fireEvent.click(within(bar).getByRole("button", { name: "Excluir (2)" }));
+    });
+    expect(deleteNote).toHaveBeenCalledWith(1);
+    expect(deleteNote).toHaveBeenCalledWith(2);
+    expect(props.onNoteTrashed).toHaveBeenCalledTimes(2);
+  });
+
+  it("Espaço seleciona pelo teclado e Esc limpa antes de voltar", async () => {
+    const props = await renderScreen();
+    fireEvent.keyDown(search(), { key: "ArrowDown" });
+    fireEvent.keyDown(item("Alfa"), { key: " " });
+    expect(screen.getByRole("toolbar", { name: "Notas selecionadas" }).textContent).toContain(
+      "1 selecionada",
+    );
+    fireEvent.keyDown(item("Alfa"), { key: "Escape" });
+    expect(screen.queryByRole("toolbar", { name: "Notas selecionadas" })).toBeNull();
+    expect(props.onBack).not.toHaveBeenCalled();
+    fireEvent.keyDown(item("Alfa"), { key: "Escape" });
+    expect(props.onBack).toHaveBeenCalledOnce();
+  });
+
+  it("lixeira: selecionar e restaurar várias", async () => {
+    vi.mocked(listNotes).mockImplementation(async ({ scope }) =>
+      scope === "trash" ? [summary(5, "Velha", "x"), summary(6, "Antiga", "x")] : [],
+    );
+    vi.mocked(restoreNote).mockResolvedValue(fullNote(5, "", "Velha"));
+    await renderScreen();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("tab", { name: "Lixeira" }));
+    });
+    fireEvent.click(item("Velha"), { ctrlKey: true });
+    fireEvent.click(item("Antiga"), { ctrlKey: true });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Restaurar (2)" }));
+    });
+    expect(restoreNote).toHaveBeenCalledWith(5);
+    expect(restoreNote).toHaveBeenCalledWith(6);
+  });
+
+  it("esvaziar a lixeira pede confirmação", async () => {
+    vi.mocked(listNotes).mockImplementation(async ({ scope }) =>
+      scope === "trash" ? [summary(5, "Velha", "x")] : [],
+    );
+    await renderScreen();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("tab", { name: "Lixeira" }));
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Esvaziar lixeira" }));
+    expect(emptyTrash).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog.textContent).toContain("Esvaziar a lixeira?");
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Esvaziar" }));
+    });
+    expect(emptyTrash).toHaveBeenCalledOnce();
+  });
+
+  it("prévia aparece depois de focar um item por 400 ms", async () => {
+    vi.useFakeTimers();
+    await renderScreen();
+    fireEvent.keyDown(search(), { key: "ArrowDown" });
+    expect(screen.queryByRole("note", { name: "Prévia" })).toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(PREVIEW_DELAY_MS);
+    });
+    const preview = screen.getByRole("note", { name: "Prévia" });
+    expect(preview.textContent).toContain("corpo da prévia");
+    fireEvent.keyDown(item("Alfa"), { key: "Escape" });
+    expect(screen.queryByRole("note", { name: "Prévia" })).toBeNull();
   });
 });

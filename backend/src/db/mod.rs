@@ -22,6 +22,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("migrations/001_init.sql"),
     include_str!("migrations/002_sticky_notes.sql"),
     include_str!("migrations/003_window_stack.sql"),
+    include_str!("migrations/004_pinned_notes.sql"),
 ];
 
 /// `PRAGMA user_version` after all migrations.
@@ -128,6 +129,15 @@ mod tests {
         ] {
             assert!(exists(&conn, name), "missing {name}");
         }
+        // v4: notes gained the pinned column.
+        let pinned: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM pragma_table_info('notes') WHERE name = 'pinned'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(pinned, 1, "missing notes.pinned");
     }
 
     #[test]

@@ -21,6 +21,8 @@
     "allow-delete-note",
     "allow-restore-note",
     "allow-purge-note",
+    "allow-set-note-pinned",
+    "allow-empty-trash",
     "allow-get-settings",
     "allow-set-setting"
   ]

@@ -28,6 +28,12 @@
   outline-offset: -2px;
 }
 
+/* Multi-selection (Ctrl/Shift+click or Space). */
+.note-list-item--checked .note-list-item__open {
+  background: var(--surface-2);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
 .note-list-item__head {
   display: flex;
   gap: var(--space-2);

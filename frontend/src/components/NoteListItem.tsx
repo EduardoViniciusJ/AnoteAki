@@ -1,4 +1,4 @@
-import type { FocusEventHandler, Ref } from "react";
+import type { FocusEventHandler, MouseEvent, Ref } from "react";
 import type { NoteSummary } from "../lib/api";
 import { IconButton, type IconName } from "./IconButton";
 import "./NoteListItem.css";
@@ -16,8 +16,14 @@ export interface NoteListItemProps {
   when: string;
   /** Roving tabindex: only the selected item is in Tab order. */
   selected: boolean;
-  onOpen: () => void;
+  /** Part of a multi-selection (Ctrl/Shift+click or Space). */
+  checked?: boolean;
+  /** Receives the click so the screen can tell open from Ctrl/Shift multi-select. */
+  onOpen: (event: MouseEvent<HTMLButtonElement>) => void;
   onFocus?: FocusEventHandler<HTMLButtonElement>;
+  onBlur?: FocusEventHandler<HTMLButtonElement>;
+  /** Mouse in / mouse out, used by the preview. */
+  onHoverChange?: (hovering: boolean) => void;
   actions: NoteListItemAction[];
   ref?: Ref<HTMLButtonElement>;
 }
@@ -27,20 +33,29 @@ export function NoteListItem({
   note,
   when,
   selected,
+  checked = false,
   onOpen,
   onFocus,
+  onBlur,
+  onHoverChange,
   actions,
   ref,
 }: NoteListItemProps) {
   return (
-    <li className="note-list-item">
+    <li
+      className={checked ? "note-list-item note-list-item--checked" : "note-list-item"}
+      onMouseEnter={() => onHoverChange?.(true)}
+      onMouseLeave={() => onHoverChange?.(false)}
+    >
       <button
         ref={ref}
         type="button"
         className="note-list-item__open"
         tabIndex={selected ? 0 : -1}
+        aria-pressed={checked || undefined}
         onClick={onOpen}
         onFocus={onFocus}
+        onBlur={onBlur}
       >
         <span className="note-list-item__head">
           <span

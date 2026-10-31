@@ -95,6 +95,8 @@ pub fn run() -> tauri::Result<()> {
             commands::notes::delete_note,
             commands::notes::restore_note,
             commands::notes::purge_note,
+            commands::notes::set_note_pinned,
+            commands::notes::empty_trash,
             commands::settings::get_settings,
             commands::settings::set_setting,
         ])
