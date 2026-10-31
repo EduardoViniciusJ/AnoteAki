@@ -295,7 +295,7 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
 
   return (
     <section
-      className="history-screen"
+      className="history-screen screen-enter"
       aria-label="Histórico"
       onKeyDown={(event) => {
         if (event.defaultPrevented) return;

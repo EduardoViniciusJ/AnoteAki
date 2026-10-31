@@ -4,6 +4,7 @@ import { App } from "./App";
 import {
   closeNoteWindow,
   getNote,
+  getSettings,
   getShortcutStatus,
   getWindowState,
   hideWindow,
@@ -18,6 +19,7 @@ import {
 vi.mock("./lib/api", () => ({
   closeNoteWindow: vi.fn(),
   getNote: vi.fn(),
+  getSettings: vi.fn(),
   getShortcutStatus: vi.fn(),
   getWindowState: vi.fn(),
   hideWindow: vi.fn(),
@@ -57,6 +59,11 @@ async function renderApp() {
 beforeEach(() => {
   vi.mocked(getWindowState).mockResolvedValue({ noteId: null, color: "blue", opacity: 100 });
   vi.mocked(listNotes).mockResolvedValue([]);
+  vi.mocked(getSettings).mockResolvedValue({
+    theme: "system",
+    shortcut: "Ctrl+Alt+K",
+    hideOnBlur: true,
+  });
   vi.mocked(getShortcutStatus).mockResolvedValue({ shortcut: "Ctrl+Alt+K", registered: true });
   vi.mocked(hideWindow).mockResolvedValue(undefined);
   vi.mocked(openNoteWindow).mockResolvedValue(undefined);
@@ -75,6 +82,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   document.documentElement.removeAttribute("style");
+  document.documentElement.removeAttribute("data-theme");
 });
 
 describe("App", () => {
@@ -169,5 +177,39 @@ describe("App", () => {
   it("não avisa quando o atalho está ativo", async () => {
     await renderApp();
     expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("aplica o tema das configurações", async () => {
+    vi.mocked(getSettings).mockResolvedValue({
+      theme: "dark",
+      shortcut: "Ctrl+Alt+K",
+      hideOnBlur: true,
+    });
+    await renderApp();
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
+  it("relê o tema ao ganhar o foco (mudado em outro post-it)", async () => {
+    await renderApp();
+    expect(document.documentElement.dataset.theme).toBe("system");
+    vi.mocked(getSettings).mockResolvedValue({
+      theme: "light",
+      shortcut: "Ctrl+Alt+K",
+      hideOnBlur: true,
+    });
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(document.documentElement.dataset.theme).toBe("light");
+  });
+
+  it("anima a abertura quando a janela aparece", async () => {
+    const root = document.body.appendChild(document.createElement("main"));
+    root.id = "app";
+    render(<App />, { container: root });
+    await act(async () => {});
+    await act(async () => emitWindowShown({ reason: "tray" }));
+    expect(root.classList.contains("is-opening")).toBe(true);
+    root.remove();
   });
 });

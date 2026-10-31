@@ -57,6 +57,8 @@ Contraste calculado pela fórmula WCAG 2.x (script em node, 28/10/2026). Todas a
 
 Qualquer cor nova precisa passar no mesmo cálculo antes de entrar.
 
+No código (`frontend/src/styles/tokens.css`), cada token é escrito uma vez como `light-dark(claro, escuro)`. O `color-scheme` da raiz escolhe o lado: `light dark` no tema `system` (segue o Windows), e `light` ou `dark` quando `data-theme` força um tema.
+
 ## Paleta de stickers
 | Nome | Uso sugerido |
 |---|---|

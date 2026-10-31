@@ -31,3 +31,33 @@ body {
   border-radius: var(--radius-window);
   background: color-mix(in srgb, var(--sticker) var(--sticker-opacity), transparent);
 }
+
+/* Opening the sticky note. Only CSS: it never delays the editor focus. */
+#app.is-opening {
+  animation: app-open var(--motion-open);
+}
+
+/* Switching screens (note ↔ history). */
+.screen-enter {
+  animation: screen-fade var(--motion-screen);
+}
+
+@keyframes app-open {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+@keyframes screen-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #app.is-opening,
+  .screen-enter {
+    animation: none;
+  }
+}

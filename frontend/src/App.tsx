@@ -3,6 +3,7 @@ import { focusAtEnd } from "./components/NoteEditor";
 import {
   closeNoteWindow,
   getNote,
+  getSettings,
   getShortcutStatus,
   getWindowState,
   hideWindow,
@@ -10,6 +11,7 @@ import {
   openNoteWindow,
   restoreNote,
 } from "./lib/api";
+import { applyTheme, playOpen } from "./lib/theme";
 import { type Look, useNoteDraft } from "./lib/useNoteDraft";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { NoteScreen } from "./screens/NoteScreen";
@@ -69,8 +71,26 @@ export function App() {
     };
   }, [replace, focusNote]);
 
+  // The theme lives in the settings. Reading it again on focus brings in a change
+  // made in another sticky note window.
   useEffect(() => {
-    const unlisten = onWindowShown(() => focusNote());
+    const loadTheme = () => {
+      getSettings()
+        .then((settings) => applyTheme(settings.theme))
+        .catch(() => {
+          // Without the settings the theme follows Windows (tokens.css).
+        });
+    };
+    loadTheme();
+    window.addEventListener("focus", loadTheme);
+    return () => window.removeEventListener("focus", loadTheme);
+  }, []);
+
+  useEffect(() => {
+    const unlisten = onWindowShown(() => {
+      playOpen(document.getElementById("app"));
+      focusNote();
+    });
     return () => {
       unlisten.then((stop) => stop()).catch(() => {});
     };
