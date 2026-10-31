@@ -3,7 +3,6 @@
 
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
-/// `SHORTCUT_UNAVAILABLE` comes with `set_setting` (T50).
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
     #[error("{0}")]
@@ -12,6 +11,8 @@ pub enum AppError {
     NotFound,
     #[error("{0}")]
     Db(&'static str),
+    #[error("O atalho está em uso por outro app.")]
+    ShortcutUnavailable,
     #[error("{0}")]
     Internal(&'static str),
 }
@@ -22,6 +23,7 @@ impl AppError {
             Self::InvalidInput(_) => "INVALID_INPUT",
             Self::NotFound => "NOT_FOUND",
             Self::Db(_) => "DB_ERROR",
+            Self::ShortcutUnavailable => "SHORTCUT_UNAVAILABLE",
             Self::Internal(_) => "INTERNAL",
         }
     }
@@ -64,6 +66,7 @@ mod tests {
         assert_eq!(AppError::InvalidInput("x").code(), "INVALID_INPUT");
         assert_eq!(AppError::NotFound.code(), "NOT_FOUND");
         assert_eq!(AppError::Db("x").code(), "DB_ERROR");
+        assert_eq!(AppError::ShortcutUnavailable.code(), "SHORTCUT_UNAVAILABLE");
     }
 
     #[test]

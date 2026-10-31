@@ -34,7 +34,6 @@ export interface Settings {
   theme: Theme;
   shortcut: string;
   hideOnBlur: boolean;
-  autostart: boolean;
 }
 
 export type ErrorCode =

@@ -157,7 +157,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 
 ## Etapa 5: Design e configurações (Fase 5)
 
-### [ ] T50. Configurações no Rust
+### [~] T50. Configurações no Rust
 - **Objetivo:** `get_settings`, `set_setting` e os comportamentos ligados a eles.
 - **Agente:** Codex · **Pastas:** `backend/`
 - **Depende de:** T20, T42
@@ -165,7 +165,7 @@ Referências: contrato de comandos em `PRD.md` §12; telas e teclado em `DESIGN-
 - **Pronto quando:** testes de validação; trocar o atalho funciona sem reiniciar.
 - **Validação:** `cargo test` + manual.
 
-### [ ] T51. Tokens, temas e fonte
+### [~] T51. Tokens, temas e fonte
 - **Objetivo:** a identidade visual do DESIGN-GUIDELINES aplicada.
 - **Agente:** Claude · **Pastas:** `frontend/`
 - **Depende de:** T22
@@ -290,3 +290,6 @@ Somente resultados reais. Formato: data · tarefa · quem · resultado · evidê
 | 2026-10-29 | T55, T56, T57 (parcial) | Claude | parcial: post-its em janelas separadas (criadas no Rust, `note-N`, transparentes), rotação de 4 cores, menu com 6 cores + opacidade 100/85/70, título opcional (`heading`, migração v2), `open_windows` para reabrir os post-its no lugar. App real: o post-it abriu transparente com cantos arredondados, 70% deixa ver o fundo e salvou. **Bug achado e corrigido:** o "+" travava o app, porque criar janela em comando síncrono trava no Windows (wry #583); os comandos de janela viraram `async`. **2º bug:** fechar o último post-it encerrava o app (padrão do Tauri); agora o processo continua e o atalho abre um novo. **Falta:** teste manual do usuário (vários post-its, reiniciar e voltarem no lugar) | `cargo test` (59), `clippy`, `fmt`; `npm test` (76), `npm run check` |
 | 2026-10-29 | T22, T31, T32, T55, T56, T57 | Usuário | ok: testados no app real (autosave, histórico, lixeira, post-its, cores, transparência, ordem da pilha com Ctrl+Alt+K) | PRs #7 e #8 |
 | 2026-10-29 | T40, T41, T42 (parcial) | Claude | T41 ok: rodar o .exe de novo com o app aberto encerra a 2ª execução na hora (código 0) e fica 1 processo. Bandeja (Abrir, Sair) implementada; o usuário testou o "Sair" (nenhum processo restou). "Iniciar com o Windows" saiu do app e vai para o instalador (T90); a ordem da pilha dos post-its agora é salva no banco (migração v3, coluna `stack`). **Falta:** a opção do instalador (T90) | `cargo test` (61), `clippy`, `fmt`; 2ª execução do .exe |
+| 2026-10-30 | T50 (parcial) | Claude | parcial: `get_settings`/`set_setting` (tabela `settings`, valor ausente ou inválido no banco → padrão; validação por chave e tipo, `INVALID_INPUT` para chave desconhecida, tipo errado, tema fora da lista, atalho vazio, > 64 caracteres, sem modificador ou mal formado). Troca de atalho: registra o novo, salva e só então solta o antigo; se o Windows recusar → `SHORTCUT_UNAVAILABLE` e o antigo continua; se o banco falhar, desfaz o registro. Na inicialização vale o atalho salvo (inválido → padrão). `hideOnBlur` esconde todos os post-its 150 ms depois de perder o foco, a não ser que o foco tenha ido para outro post-it. App real: atalho mostrou o post-it e focar outra janela o escondeu (teclas simuladas). **Falta:** trocar o atalho pelo app real (depende da tela do T52) | `cargo test` (76), `clippy -D warnings`, `fmt --check`; `npm test` (76), `npm run check` |
+| 2026-10-30 | T51 (parcial) | Claude | parcial: cada cor em `tokens.css` virou `light-dark(claro, escuro)` e o `color-scheme` escolhe o lado (`system` segue o Windows via `prefers-color-scheme`; `data-theme="light"/"dark"` força). O post-it lê o tema em `get_settings` ao abrir e a cada foco (uma troca feita em outro post-it chega a todos). Inter Variable 5.3.0 (`@fontsource-variable/inter`, OFL-1.1) embutida como `.woff2` local (CSP `font-src 'self'`). Animações: abrir 120 ms (opacidade + escala 0,98→1, repetida a cada `window-shown`) e troca de tela 120 ms (fade), nenhuma com `prefers-reduced-motion`. **Não feito:** a animação de esconder (80 ms), porque o Rust esconde a janela na hora e atrasar o `hide()` iria contra "rápido de sair". **Falta:** o teste manual nos 2 temas (trocar o tema do Windows com o app aberto) | `npm test` (82), `npm run check`, `npm run build`; `grep` por hex fora de `tokens.css`: nenhum |
+| 2026-10-31 | fix (teclas do WebView2) | Claude | ok: o usuário viu o `Ctrl+F` abrir a busca nativa do WebView2; agora cada post-it desliga as teclas do navegador (`SetAreBrowserAcceleratorKeysEnabled(false)`); as de edição continuam | `cargo test` (76), `clippy`, `fmt` |

@@ -4,6 +4,7 @@
 //! access avoids `SQLITE_BUSY` between commands.
 
 pub mod notes;
+pub mod settings;
 pub mod windows;
 
 use std::path::Path;

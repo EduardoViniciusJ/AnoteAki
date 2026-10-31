@@ -182,6 +182,32 @@ pub fn bounds_of<R: Runtime>(window: &WebviewWindow<R>) -> tauri::Result<Bounds>
 
 /// Creates a hidden sticky note window. Without `bounds` it opens next to `near`,
 /// or centered on the cursor monitor.
+/// WebView2 browser keys (Ctrl+F find bar, Ctrl+P, F5...) act on the page, not the app.
+/// Editing keys (Ctrl+C, Ctrl+V, Ctrl+Z) keep working.
+fn disable_browser_keys(window: &WebviewWindow) {
+    #[cfg(windows)]
+    let done = window.with_webview(|webview| {
+        use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings3;
+        use windows_core::Interface;
+        // SAFETY: COM calls on this window's own WebView2, run on the main thread.
+        let result = unsafe {
+            webview
+                .controller()
+                .CoreWebView2()
+                .and_then(|core| core.Settings())
+                .and_then(|settings| settings.cast::<ICoreWebView2Settings3>())
+                .and_then(|settings| settings.SetAreBrowserAcceleratorKeysEnabled(false))
+        };
+        if result.is_err() {
+            eprintln!("AnoteAki: não foi possível desligar as teclas do navegador.");
+        }
+    });
+    #[cfg(windows)]
+    if done.is_err() {
+        eprintln!("AnoteAki: não foi possível desligar as teclas do navegador.");
+    }
+}
+
 fn create(
     app: &AppHandle,
     windows: &Windows,
@@ -206,6 +232,7 @@ fn create(
         .skip_taskbar(true)
         .visible(false)
         .build()?;
+    disable_browser_keys(&window);
     match (bounds, near) {
         (Some(bounds), _) => {
             window.set_size(PhysicalSize::new(bounds.width, bounds.height))?;

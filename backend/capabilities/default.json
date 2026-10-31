@@ -20,6 +20,8 @@
     "allow-search-notes",
     "allow-delete-note",
     "allow-restore-note",
-    "allow-purge-note"
+    "allow-purge-note",
+    "allow-get-settings",
+    "allow-set-setting"
   ]
 }
