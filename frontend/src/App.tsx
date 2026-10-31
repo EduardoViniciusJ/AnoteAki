@@ -12,7 +12,7 @@ import {
   restoreNote,
 } from "./lib/api";
 import { copyText } from "./lib/clipboard";
-import { noteAsText } from "./lib/text";
+import { noteAsMarkdown, noteAsText } from "./lib/text";
 import { applyTheme, playOpen } from "./lib/theme";
 import { type Look, useNoteDraft } from "./lib/useNoteDraft";
 import { HistoryScreen } from "./screens/HistoryScreen";
@@ -125,6 +125,12 @@ export function App() {
     return () => clearTimeout(timer);
   }, [notice]);
 
+  const copyNote = (text: string) => {
+    copyText(text)
+      .then(() => setNotice("Copiado"))
+      .catch(() => setWarning("Não foi possível copiar a nota."));
+  };
+
   const backToNote = () => {
     setScreen("note");
     focusNote();
@@ -183,11 +189,8 @@ export function App() {
           if (saved) closeNoteWindow().catch(() => {});
         });
       }}
-      onCopy={() => {
-        copyText(noteAsText(draft.heading, draft.body))
-          .then(() => setNotice("Copiado"))
-          .catch(() => setWarning("Não foi possível copiar a nota."));
-      }}
+      onCopy={() => copyNote(noteAsText(draft.heading, draft.body))}
+      onCopyMarkdown={() => copyNote(noteAsMarkdown(draft.heading, draft.body))}
       notice={notice}
       onDismissNotice={() => {
         setNotice(null);

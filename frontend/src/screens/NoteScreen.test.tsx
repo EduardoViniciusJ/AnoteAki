@@ -15,6 +15,7 @@ function renderScreen(props: Partial<NoteScreenProps> = {}) {
     onNewNote: vi.fn(),
     onClose: vi.fn(),
     onCopy: vi.fn(),
+    onCopyMarkdown: vi.fn(),
     onOpenHistory: vi.fn(),
     onTitleSubmit: vi.fn(),
     warning: null,
@@ -108,10 +109,15 @@ describe("NoteScreen", () => {
     expect(props.onDismissWarning).toHaveBeenCalledOnce();
   });
 
-  it("o botão copiar copia a nota", () => {
+  it("o menu copiar oferece texto e Markdown", () => {
     const props = renderScreen({ body: "leite" });
-    fireEvent.click(screen.getByRole("button", { name: "Copiar nota (Ctrl+Shift+C)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Copiar nota" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Copiar texto/ }));
     expect(props.onCopy).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("menu")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Copiar nota" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Copiar como Markdown/ }));
+    expect(props.onCopyMarkdown).toHaveBeenCalledOnce();
   });
 
   it("Ctrl+Shift+C copia; Ctrl+C sozinho fica com o texto selecionado", () => {
@@ -120,6 +126,8 @@ describe("NoteScreen", () => {
     expect(props.onCopy).not.toHaveBeenCalled();
     fireEvent.keyDown(editor(), { key: "C", ctrlKey: true, shiftKey: true });
     expect(props.onCopy).toHaveBeenCalledOnce();
+    fireEvent.keyDown(editor(), { key: "M", ctrlKey: true, shiftKey: true });
+    expect(props.onCopyMarkdown).toHaveBeenCalledOnce();
   });
 
   it("nota vazia não copia", () => {
@@ -127,8 +135,11 @@ describe("NoteScreen", () => {
     const button = screen.getByRole("button", { name: "Copiar nota (nota vazia)" });
     expect(button.getAttribute("aria-disabled")).toBe("true");
     fireEvent.click(button);
+    expect(screen.queryByRole("menu")).toBeNull();
     fireEvent.keyDown(editor(), { key: "C", ctrlKey: true, shiftKey: true });
+    fireEvent.keyDown(editor(), { key: "M", ctrlKey: true, shiftKey: true });
     expect(props.onCopy).not.toHaveBeenCalled();
+    expect(props.onCopyMarkdown).not.toHaveBeenCalled();
   });
 
   it("mostra a confirmação", () => {

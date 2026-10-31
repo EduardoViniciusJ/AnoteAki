@@ -1,5 +1,6 @@
 import type { Ref } from "react";
 import { ColorMenu } from "../components/ColorMenu";
+import { CopyMenu } from "../components/CopyMenu";
 import { IconButton } from "../components/IconButton";
 import { NoteEditor } from "../components/NoteEditor";
 import { SaveStatus } from "../components/SaveStatus";
@@ -25,8 +26,10 @@ export interface NoteScreenProps {
   onNewNote: () => void;
   /** "×" or `Ctrl+W`: close this sticky note. */
   onClose: () => void;
-  /** Copy button or `Ctrl+Shift+C`: the whole note to the clipboard. */
+  /** "Copiar texto" or `Ctrl+Shift+C`: the whole note to the clipboard. */
   onCopy: () => void;
+  /** "Copiar como Markdown" or `Ctrl+Shift+M`: the title becomes a heading. */
+  onCopyMarkdown: () => void;
   /** History button, `Ctrl+H` or `Ctrl+F`. */
   onOpenHistory: () => void;
   /** Enter in the title: go to the text. */
@@ -55,6 +58,7 @@ export function NoteScreen({
   onNewNote,
   onClose,
   onCopy,
+  onCopyMarkdown,
   onOpenHistory,
   onTitleSubmit,
   warning,
@@ -80,6 +84,9 @@ export function NoteScreen({
         } else if (ctrl && event.shiftKey && key === "c") {
           event.preventDefault();
           if (!empty) onCopy();
+        } else if (ctrl && event.shiftKey && key === "m") {
+          event.preventDefault();
+          if (!empty) onCopyMarkdown();
         } else if (ctrl && key === "n") {
           event.preventDefault();
           onNewNote();
@@ -102,12 +109,7 @@ export function NoteScreen({
           </span>
         )}
         <ColorMenu look={look} onChange={onLookChange} disabled={readOnly} />
-        <IconButton
-          icon="copy"
-          label={empty ? "Copiar nota (nota vazia)" : "Copiar nota (Ctrl+Shift+C)"}
-          disabled={empty}
-          onClick={onCopy}
-        />
+        <CopyMenu onCopyText={onCopy} onCopyMarkdown={onCopyMarkdown} disabled={empty} />
         <IconButton icon="plus" label="Nova nota (Ctrl+N)" onClick={onNewNote} />
         <IconButton icon="history" label="Histórico (Ctrl+H)" onClick={onOpenHistory} />
         {/* Disabled until the Settings screen (T52). */}

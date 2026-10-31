@@ -219,11 +219,25 @@ describe("App", () => {
     await renderApp();
     fireEvent.change(title(), { target: { value: "Compras" } });
     fireEvent.change(editor(), { target: { value: "leite" } });
+    fireEvent.click(screen.getByRole("button", { name: "Copiar nota" }));
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Copiar nota (Ctrl+Shift+C)" }));
+      fireEvent.click(screen.getByRole("menuitem", { name: /Copiar texto/ }));
     });
     expect(writeText).toHaveBeenCalledWith("Compras\n\nleite");
     expect(screen.getByRole("status").textContent).toContain("Copiado");
+  });
+
+  it("copia como Markdown com o título em heading", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await renderApp();
+    fireEvent.change(title(), { target: { value: "Compras" } });
+    fireEvent.change(editor(), { target: { value: "leite" } });
+    fireEvent.click(screen.getByRole("button", { name: "Copiar nota" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: /Copiar como Markdown/ }));
+    });
+    expect(writeText).toHaveBeenCalledWith("# Compras\n\nleite");
   });
 
   it("avisa quando não consegue copiar", async () => {
@@ -231,8 +245,9 @@ describe("App", () => {
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
     await renderApp();
     fireEvent.change(editor(), { target: { value: "leite" } });
+    fireEvent.click(screen.getByRole("button", { name: "Copiar nota" }));
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Copiar nota (Ctrl+Shift+C)" }));
+      fireEvent.click(screen.getByRole("menuitem", { name: /Copiar texto/ }));
     });
     expect(screen.getByRole("status").textContent).toContain("Não foi possível copiar");
   });
