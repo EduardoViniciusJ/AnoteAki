@@ -133,6 +133,13 @@
   outline-offset: 1px;
 }
 
+/* The native dropdown popup does not follow the page theme in WebView2:
+   without explicit colors it opens white with the inherited light text. */
+.history-screen__sort option {
+  background: var(--sticker-paper);
+  color: var(--ink);
+}
+
 .history-screen__empty-trash {
   height: var(--icon-button);
   padding: 0 var(--space-3);
