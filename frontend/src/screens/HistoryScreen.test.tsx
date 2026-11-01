@@ -324,10 +324,9 @@ describe("HistoryScreen", () => {
 
   it("ordenar por título lista plana, sem grupos por dia", async () => {
     await renderScreen();
+    fireEvent.click(screen.getByRole("button", { name: "Ordenar" }));
     await act(async () => {
-      fireEvent.change(screen.getByRole("combobox", { name: "Ordenar" }), {
-        target: { value: "title" },
-      });
+      fireEvent.click(screen.getByRole("button", { name: "Título (A–Z)" }));
     });
     expect(listNotes).toHaveBeenLastCalledWith({ ...firstPage, sort: "title" });
     expect(screen.queryByRole("region", { name: "Hoje" })).toBeNull();
