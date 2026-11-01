@@ -41,7 +41,7 @@
   --toolbar-height: 32px;
   --icon-button: 28px;
 
-  --motion-open: 120ms ease-out;
+  --motion-open: 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
   --motion-screen: 120ms ease-out;
 }
 
