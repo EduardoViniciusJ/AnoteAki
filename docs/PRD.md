@@ -205,14 +205,19 @@ interface WindowState {
   noteId: number | null;  // null = post-it em branco, ainda não salvo
   color: StickerColor;
   opacity: StickerOpacity;
+  pinned: boolean;        // padrão true: fixado, não some ao clicar fora
 }
 
 type Theme = "system" | "light" | "dark";
+type EditorFont = "inter" | "serif" | "mono";    // pilhas locais; nada vem da rede
+type WindowSize = "small" | "medium" | "large";  // presets 260×220, 340×320, 460×520 (px lógicos)
 
 interface Settings {
   theme: Theme;              // padrão "system"
   shortcut: string;          // padrão "Ctrl+Alt+K" (formato accelerator do plugin global-shortcut)
-  hideOnBlur: boolean;       // padrão true
+  hideOnBlur: boolean;       // padrão true; só afeta post-its desafixados
+  editorFont: EditorFont;    // padrão "inter"
+  focusMode: boolean;        // padrão false; true esconde barra e rodapé enquanto digita
 }
 
 type ErrorCode =
@@ -233,6 +238,7 @@ interface AppError { code: ErrorCode; message: string } // message NUNCA contém
 | `limit` | 1 a 200 (padrão 50) |
 | `offset` | ≥ 0 |
 | `shortcut` | accelerator válido com ≥ 1 modificador (Ctrl/Alt/Shift/Super) + 1 tecla |
+| `url` (`open_link`) | `http://` ou `https://` após parse, ≤ 2048 caracteres |
 
 ### Comandos: notas
 | Comando | Args | Retorno | Regras |
@@ -258,6 +264,9 @@ interface AppError { code: ErrorCode; message: string } // message NUNCA contém
 | `open_note_window` | `{ noteId: number \| null }` | `void` | Abre um post-it ao lado do que chamou: `null` = em branco, com a próxima cor da rotação amarelo → rosa → azul → verde; um id = aquela nota (se já estiver aberta, só traz para frente). |
 | `close_note_window` | — | `void` | Fecha o post-it que chamou; a nota continua no histórico. |
 | `get_shortcut_status` | — | `{ shortcut: string, registered: boolean }` | Atalho atual e se o registro global deu certo. A UI consulta ao iniciar e mostra um aviso + link para Configurações se `registered = false`. Se o registro falhar na inicialização, o Rust também mostra a janela (senão o app ficaria inacessível). |
+| `set_window_pinned` | `{ pinned: boolean }` | `void` | Fixa/desafixa o post-it que chamou. Desafixado, ele some quando o foco sai do app (se `hideOnBlur`); fixado (padrão), fica na tela. Persistido em `open_windows`. |
+| `set_window_size` | `{ size: WindowSize }` | `void` | Redimensiona o post-it que chamou para o preset, mantendo o canto superior esquerdo (reposiciona o mínimo necessário para caber no monitor). O tamanho continua salvo em `open_windows` como hoje. Valor desconhecido → `INVALID_INPUT`. |
+| `open_link` | `{ url: string }` | `void` | Abre a URL no navegador padrão. Só `http`/`https` após parse e ≤ 2048 caracteres; qualquer outro esquema ou texto → `INVALID_INPUT`. |
 
 ### Eventos (Rust → UI)
 | Evento | Payload | Quando |
@@ -271,7 +280,7 @@ Não há evento de falha do atalho na inicialização: um evento emitido antes d
 - Os post-its com nota ficam na tabela `open_windows` (posição e tamanho, salvos ao perder o foco e ao esconder) e voltam ao reiniciar. Um post-it em branco não é salvo.
 - Criar janela só em comando `async`: em comando síncrono o Windows trava (wry #583).
 - Fechar o último post-it não encerra o processo (`RunEvent::ExitRequested` sem código é cancelado); o atalho abre um novo.
-- `hideOnBlur = true` → evento `Focused(false)` da janela → esconde todos os post-its, a não ser que o foco tenha ido para outro post-it (espera 150 ms para o foco chegar).
+- `hideOnBlur = true` → evento `Focused(false)` da janela → esconde os post-its **desafixados**, a não ser que o foco tenha ido para outro post-it (espera 150 ms para o foco chegar). Post-its fixados (padrão) nunca somem por perda de foco; `Esc`, o atalho global e Alt+F4 continuam escondendo **todos**.
 - Fechar a janela (Alt+F4) **esconde todos**, como o Esc; só "Sair" na bandeja encerra o processo.
 
 ### Responsabilidade do front em relação a salvamento
