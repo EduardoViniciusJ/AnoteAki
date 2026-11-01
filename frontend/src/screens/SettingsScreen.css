@@ -28,7 +28,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--space-2) var(--space-4) var(--space-4);
+  padding: var(--space-2) var(--space-3) var(--space-4);
 }
 
 .settings-screen__message {
@@ -53,11 +53,18 @@
   text-transform: uppercase;
 }
 
+/* Post-its are narrow (the small preset is 260px wide): when the select
+   does not fit beside the label, it wraps below it, still on the right. */
 .settings-screen__row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2);
+  gap: var(--space-1) var(--space-2);
+}
+
+.settings-screen__row > .select-menu {
+  margin-left: auto;
 }
 
 .settings-screen__label,
