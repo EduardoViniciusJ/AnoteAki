@@ -8,8 +8,11 @@ import {
   getWindowState,
   hideWindow,
   onWindowShown,
+  openLink,
   openNoteWindow,
   restoreNote,
+  setWindowPinned,
+  setWindowSize,
 } from "./lib/api";
 import { copyText } from "./lib/clipboard";
 import { noteAsMarkdown, noteAsText } from "./lib/text";
@@ -37,6 +40,8 @@ export function App() {
   const [screen, setScreen] = useState<Screen>("note");
   const [warning, setWarning] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Every sticky note starts pinned; the real value comes from get_window_state.
+  const [pinned, setPinned] = useState(true);
   const titleRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   // Read inside callbacks that must not re-subscribe on every keystroke.
@@ -66,6 +71,7 @@ export function App() {
       .then(async (state) => {
         const note = state.noteId === null ? null : await getNote(state.noteId);
         if (!active) return;
+        setPinned(state.pinned);
         replace(note, { color: state.color, opacity: state.opacity });
         focusNote(note && (note.heading || note.body) ? "body" : "title");
       })
@@ -206,6 +212,20 @@ export function App() {
       onDismissWarning={() => {
         setWarning(null);
         focusNote();
+      }}
+      pinned={pinned}
+      onPinnedChange={(next) => {
+        setPinned(next);
+        setWindowPinned(next).catch(() => {
+          setPinned(!next);
+          setWarning("Não foi possível fixar ou desafixar o post-it.");
+        });
+      }}
+      onSizeChange={(size) => {
+        setWindowSize(size).catch(() => setWarning("Não foi possível mudar o tamanho."));
+      }}
+      onOpenLink={(url) => {
+        openLink(url).catch(() => setWarning("Não foi possível abrir o link."));
       }}
       titleRef={titleRef}
       editorRef={editorRef}

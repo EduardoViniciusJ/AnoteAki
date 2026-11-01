@@ -23,6 +23,11 @@
   outline-offset: 2px;
 }
 
+.icon-button[aria-pressed="true"] {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
 .icon-button[aria-disabled="true"] {
   opacity: 0.4;
   cursor: default;

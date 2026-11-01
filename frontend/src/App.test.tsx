@@ -11,8 +11,11 @@ import {
   listNotes,
   type Note,
   onWindowShown,
+  openLink,
   openNoteWindow,
   saveNote,
+  setWindowPinned,
+  setWindowSize,
   type WindowShownPayload,
 } from "./lib/api";
 
@@ -25,10 +28,13 @@ vi.mock("./lib/api", () => ({
   hideWindow: vi.fn(),
   listNotes: vi.fn(),
   onWindowShown: vi.fn(),
+  openLink: vi.fn(),
   openNoteWindow: vi.fn(),
   restoreNote: vi.fn(),
   saveNote: vi.fn(),
   searchNotes: vi.fn(),
+  setWindowPinned: vi.fn(),
+  setWindowSize: vi.fn(),
 }));
 
 let emitWindowShown: (payload: WindowShownPayload) => void = () => {};
@@ -58,7 +64,15 @@ async function renderApp() {
 }
 
 beforeEach(() => {
-  vi.mocked(getWindowState).mockResolvedValue({ noteId: null, color: "blue", opacity: 100 });
+  vi.mocked(getWindowState).mockResolvedValue({
+    noteId: null,
+    color: "blue",
+    opacity: 100,
+    pinned: true,
+  });
+  vi.mocked(setWindowPinned).mockResolvedValue(undefined);
+  vi.mocked(setWindowSize).mockResolvedValue(undefined);
+  vi.mocked(openLink).mockResolvedValue(undefined);
   vi.mocked(listNotes).mockResolvedValue([]);
   vi.mocked(getSettings).mockResolvedValue({
     theme: "system",
@@ -96,7 +110,12 @@ describe("App", () => {
   });
 
   it("carrega a nota da janela com cor e transparência", async () => {
-    vi.mocked(getWindowState).mockResolvedValue({ noteId: 4, color: "pink", opacity: 85 });
+    vi.mocked(getWindowState).mockResolvedValue({
+      noteId: 4,
+      color: "pink",
+      opacity: 85,
+      pinned: true,
+    });
     vi.mocked(getNote).mockResolvedValue(note(4, "lista"));
     await renderApp();
     expect(getNote).toHaveBeenCalledWith(4);
@@ -238,6 +257,79 @@ describe("App", () => {
       fireEvent.click(screen.getByRole("button", { name: "Copiar como Markdown (Ctrl+Shift+M)" }));
     });
     expect(writeText).toHaveBeenCalledWith("# Compras\n\nleite");
+  });
+
+  it("post-it começa fixado e o botão desafixa", async () => {
+    await renderApp();
+    const pin = screen.getByRole("button", { name: "Fixado na tela (clique para desafixar)" });
+    expect(pin.getAttribute("aria-pressed")).toBe("true");
+    await act(async () => fireEvent.click(pin));
+    expect(setWindowPinned).toHaveBeenCalledWith(false);
+    const unpinned = screen.getByRole("button", { name: "Desafixado: some ao clicar fora" });
+    expect(unpinned.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("mostra o post-it desafixado vindo do Rust", async () => {
+    vi.mocked(getWindowState).mockResolvedValue({
+      noteId: null,
+      color: "blue",
+      opacity: 100,
+      pinned: false,
+    });
+    await renderApp();
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: "Desafixado: some ao clicar fora" })),
+    );
+    expect(setWindowPinned).toHaveBeenCalledWith(true);
+  });
+
+  it("se fixar falha, volta o estado e avisa", async () => {
+    vi.mocked(setWindowPinned).mockRejectedValue({ code: "INTERNAL", message: "x" });
+    await renderApp();
+    await act(async () =>
+      fireEvent.click(
+        screen.getByRole("button", { name: "Fixado na tela (clique para desafixar)" }),
+      ),
+    );
+    expect(
+      screen.getByRole("button", { name: "Fixado na tela (clique para desafixar)" }),
+    ).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toContain("fixar ou desafixar");
+  });
+
+  it("muda o tamanho do post-it pelo menu", async () => {
+    await renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "Tamanho do post-it" }));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Médio" })));
+    expect(setWindowSize).toHaveBeenCalledWith("medium");
+  });
+
+  it("Ctrl+clique num link abre no navegador", async () => {
+    await renderApp();
+    const text = "ver https://example.com/doc. ok";
+    fireEvent.change(editor(), { target: { value: text } });
+    editor().setSelectionRange(10, 10);
+    await act(async () => fireEvent.click(editor(), { ctrlKey: true }));
+    expect(openLink).toHaveBeenCalledWith("https://example.com/doc");
+  });
+
+  it("clique sem Ctrl ou fora do link não abre nada", async () => {
+    await renderApp();
+    fireEvent.change(editor(), { target: { value: "ver https://example.com ok" } });
+    editor().setSelectionRange(10, 10);
+    fireEvent.click(editor());
+    editor().setSelectionRange(1, 1);
+    fireEvent.click(editor(), { ctrlKey: true });
+    expect(openLink).not.toHaveBeenCalled();
+  });
+
+  it("avisa quando não consegue abrir o link", async () => {
+    vi.mocked(openLink).mockRejectedValue({ code: "INVALID_INPUT", message: "Link inválido." });
+    await renderApp();
+    fireEvent.change(editor(), { target: { value: "https://example.com" } });
+    editor().setSelectionRange(3, 3);
+    await act(async () => fireEvent.click(editor(), { ctrlKey: true }));
+    expect(screen.getByRole("status").textContent).toContain("Não foi possível abrir o link.");
   });
 
   it("avisa quando não consegue copiar", async () => {

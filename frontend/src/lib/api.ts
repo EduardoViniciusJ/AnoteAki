@@ -65,7 +65,12 @@ export interface WindowState {
   noteId: number | null;
   color: StickerColor;
   opacity: StickerOpacity;
+  /** Default true: stays on screen when focus leaves the app. */
+  pinned: boolean;
 }
+
+/** Size presets: 260×220, 340×320 and 460×520 logical px. */
+export type WindowSize = "small" | "medium" | "large";
 
 export interface ShortcutStatus {
   shortcut: string;
@@ -137,6 +142,11 @@ export const getWindowState = () => call<WindowState>("get_window_state");
 /** `null` opens a new blank sticky note; an id opens (or focuses) that note. */
 export const openNoteWindow = (noteId: number | null) => call<void>("open_note_window", { noteId });
 export const closeNoteWindow = () => call<void>("close_note_window");
+/** Unpinned sticky notes hide when focus leaves the app (if `hideOnBlur`). */
+export const setWindowPinned = (pinned: boolean) => call<void>("set_window_pinned", { pinned });
+export const setWindowSize = (size: WindowSize) => call<void>("set_window_size", { size });
+/** Opens an http/https URL in the default browser (validated in Rust). */
+export const openLink = (url: string) => call<void>("open_link", { url });
 
 // Events (Rust → UI)
 export const onWindowShown = (

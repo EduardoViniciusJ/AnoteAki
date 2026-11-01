@@ -32,6 +32,15 @@ const title = () => screen.getByLabelText("Título da nota");
 afterEach(cleanup);
 
 describe("NoteScreen", () => {
+  it("botão de fixar mostra o estado e alterna", () => {
+    const onPinnedChange = vi.fn();
+    renderScreen({ pinned: false, onPinnedChange });
+    const pin = screen.getByRole("button", { name: "Desafixado: some ao clicar fora" });
+    expect(pin.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(pin);
+    expect(onPinnedChange).toHaveBeenCalledWith(true);
+  });
+
   it("repassa o texto e o título digitados", () => {
     const props = renderScreen();
     fireEvent.change(editor(), { target: { value: "oi" } });

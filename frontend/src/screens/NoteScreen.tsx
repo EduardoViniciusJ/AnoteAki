@@ -3,9 +3,11 @@ import { ColorMenu } from "../components/ColorMenu";
 import { IconButton } from "../components/IconButton";
 import { NoteEditor } from "../components/NoteEditor";
 import { SaveStatus } from "../components/SaveStatus";
+import { SizeMenu } from "../components/SizeMenu";
 import { TitleField } from "../components/TitleField";
 import { Toast } from "../components/Toast";
 import { WordCount } from "../components/WordCount";
+import type { WindowSize } from "../lib/api";
 import type { Look, SaveStatus as Status } from "../lib/useNoteDraft";
 import "./NoteScreen.css";
 
@@ -39,6 +41,12 @@ export interface NoteScreenProps {
   /** Short confirmation, e.g. "Copiado". */
   notice?: string | null;
   onDismissNotice?: () => void;
+  /** Pinned (default) = stays on screen when focus leaves the app. */
+  pinned?: boolean;
+  onPinnedChange?: (pinned: boolean) => void;
+  onSizeChange?: (size: WindowSize) => void;
+  /** Ctrl+click on a link in the text. */
+  onOpenLink?: (url: string) => void;
   titleRef?: Ref<HTMLInputElement>;
   editorRef?: Ref<HTMLTextAreaElement>;
 }
@@ -65,6 +73,10 @@ export function NoteScreen({
   onDismissWarning,
   notice = null,
   onDismissNotice = () => {},
+  pinned = true,
+  onPinnedChange = () => {},
+  onSizeChange = () => {},
+  onOpenLink,
   titleRef,
   editorRef,
 }: NoteScreenProps) {
@@ -108,7 +120,16 @@ export function NoteScreen({
             </button>
           </span>
         )}
+        <IconButton
+          icon="pin"
+          label={
+            pinned ? "Fixado na tela (clique para desafixar)" : "Desafixado: some ao clicar fora"
+          }
+          pressed={pinned}
+          onClick={() => onPinnedChange(!pinned)}
+        />
         <ColorMenu look={look} onChange={onLookChange} disabled={readOnly} />
+        <SizeMenu onChange={onSizeChange} />
         <IconButton
           icon="copy"
           label={empty ? "Copiar texto (nota vazia)" : "Copiar texto (Ctrl+Shift+C)"}
@@ -142,6 +163,7 @@ export function NoteScreen({
         onChange={onBodyChange}
         placeholder="Escreva algo…"
         readOnly={readOnly}
+        onOpenLink={onOpenLink}
       />
       {warning ? (
         <Toast variant="error" message={warning} onDismiss={onDismissWarning} />
