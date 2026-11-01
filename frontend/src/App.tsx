@@ -11,12 +11,17 @@ import {
   openNoteWindow,
   restoreNote,
 } from "./lib/api";
+import { copyText } from "./lib/clipboard";
+import { noteAsMarkdown, noteAsText } from "./lib/text";
 import { applyTheme, playOpen } from "./lib/theme";
 import { type Look, useNoteDraft } from "./lib/useNoteDraft";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { NoteScreen } from "./screens/NoteScreen";
 
 type Screen = "note" | "history";
+
+/** How long a confirmation like "Copiado" stays on screen. */
+const NOTICE_MS = 2000;
 
 /** Paints the sticky note with its color and opacity. */
 function applyLook({ color, opacity }: Look) {
@@ -31,6 +36,7 @@ export function App() {
   const { flush, replace } = draft;
   const [screen, setScreen] = useState<Screen>("note");
   const [warning, setWarning] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   // Read inside callbacks that must not re-subscribe on every keystroke.
@@ -113,6 +119,18 @@ export function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  const copyNote = (text: string) => {
+    copyText(text)
+      .then(() => setNotice("Copiado"))
+      .catch(() => setWarning("Não foi possível copiar a nota."));
+  };
+
   const backToNote = () => {
     setScreen("note");
     focusNote();
@@ -170,6 +188,13 @@ export function App() {
         void flush().then((saved) => {
           if (saved) closeNoteWindow().catch(() => {});
         });
+      }}
+      onCopy={() => copyNote(noteAsText(draft.heading, draft.body))}
+      onCopyMarkdown={() => copyNote(noteAsMarkdown(draft.heading, draft.body))}
+      notice={notice}
+      onDismissNotice={() => {
+        setNotice(null);
+        focusNote();
       }}
       onOpenHistory={() => {
         // Save before switching screens (PRD §12) so the history lists the new text.
