@@ -33,10 +33,16 @@ export interface NoteSummary {
 
 export type Theme = "system" | "light" | "dark";
 
+/** Font of the note text; local font stacks only. */
+export type EditorFont = "inter" | "serif" | "mono";
+
 export interface Settings {
   theme: Theme;
   shortcut: string;
   hideOnBlur: boolean;
+  editorFont: EditorFont;
+  /** Hides the toolbar and footer while typing. */
+  focusMode: boolean;
 }
 
 export type ErrorCode =
