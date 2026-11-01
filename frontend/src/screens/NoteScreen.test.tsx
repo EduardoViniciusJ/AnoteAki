@@ -17,6 +17,7 @@ function renderScreen(props: Partial<NoteScreenProps> = {}) {
     onCopy: vi.fn(),
     onCopyMarkdown: vi.fn(),
     onOpenHistory: vi.fn(),
+    onOpenSettings: vi.fn(),
     onTitleSubmit: vi.fn(),
     warning: null,
     onDismissWarning: vi.fn(),
@@ -144,5 +145,54 @@ describe("NoteScreen", () => {
   it("mostra a confirmação", () => {
     renderScreen({ body: "x", notice: "Copiado" });
     expect(screen.getByRole("status").textContent).toContain("Copiado");
+  });
+
+  it("abre as configurações pelo botão e por Ctrl+,", () => {
+    const props = renderScreen();
+    fireEvent.click(screen.getByRole("button", { name: "Configurações (Ctrl+,)" }));
+    fireEvent.keyDown(editor(), { key: ",", ctrlKey: true });
+    expect(props.onOpenSettings).toHaveBeenCalledTimes(2);
+  });
+
+  it("aviso com ação leva às configurações", () => {
+    const onClick = vi.fn();
+    renderScreen({ warning: "Atalho em uso", warningAction: { label: "Configurações", onClick } });
+    fireEvent.click(screen.getByRole("button", { name: "Configurações" }));
+    expect(onClick).toHaveBeenCalled();
+  });
+
+  describe("modo foco", () => {
+    const toolbar = () => document.querySelector(".note-screen__toolbar");
+    const footer = () => document.querySelector(".note-screen__footer");
+    const faded = () =>
+      Boolean(toolbar()?.classList.contains("is-faded")) &&
+      Boolean(footer()?.classList.contains("is-faded"));
+
+    it("esconde a barra e o rodapé ao digitar", () => {
+      renderScreen({ focusMode: true });
+      expect(faded()).toBe(false);
+      fireEvent.change(editor(), { target: { value: "a" } });
+      expect(faded()).toBe(true);
+    });
+
+    it("mostra de novo ao mover o mouse", () => {
+      renderScreen({ focusMode: true });
+      fireEvent.change(editor(), { target: { value: "a" } });
+      fireEvent.mouseMove(editor());
+      expect(faded()).toBe(false);
+    });
+
+    it("mostra de novo quando o editor perde o foco", () => {
+      renderScreen({ focusMode: true });
+      fireEvent.change(editor(), { target: { value: "a" } });
+      fireEvent.blur(editor());
+      expect(faded()).toBe(false);
+    });
+
+    it("desligado: nada some ao digitar", () => {
+      renderScreen();
+      fireEvent.change(editor(), { target: { value: "a" } });
+      expect(toolbar()?.classList.contains("is-faded")).toBe(false);
+    });
   });
 });

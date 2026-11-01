@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { applyTheme, playOpen } from "./theme";
+import { applyEditorFont, applyTheme, playOpen } from "./theme";
 
 afterEach(() => {
   delete document.documentElement.dataset.theme;
+  document.documentElement.removeAttribute("style");
 });
 
 describe("applyTheme", () => {
@@ -11,6 +12,18 @@ describe("applyTheme", () => {
     expect(document.documentElement.dataset.theme).toBe("dark");
     applyTheme("system");
     expect(document.documentElement.dataset.theme).toBe("system");
+  });
+});
+
+describe("applyEditorFont", () => {
+  it("sets a local font stack for the editor", () => {
+    const font = () => document.documentElement.style.getPropertyValue("--font-editor");
+    applyEditorFont("mono");
+    expect(font()).toContain("Consolas");
+    applyEditorFont("serif");
+    expect(font()).toContain("Georgia");
+    applyEditorFont("inter");
+    expect(font()).toBe("var(--font-ui)");
   });
 });
 
