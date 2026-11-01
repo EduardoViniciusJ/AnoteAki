@@ -28,8 +28,8 @@ Contraste calculado pela fórmula WCAG 2.x (script em node, 28/10/2026). Todas a
   --border:     rgb(0 0 0 / 0.12);
   --shadow:     0 6px 20px rgb(0 0 0 / 0.14), 0 1px 3px rgb(0 0 0 / 0.08);
 
-  --sticker-yellow: #FFF4B8; --sticker-pink:  #FFDDE5; --sticker-blue:  #D9ECFF;
-  --sticker-green:  #DDF3D5; --sticker-lilac: #E9E0FF; --sticker-paper: #F4F2EE;
+  --sticker-yellow: #F2ECD2; --sticker-pink:  #F0E0E4; --sticker-blue:  #DFE8F0;
+  --sticker-green:  #E1EADD; --sticker-lilac: #E6E2EF; --sticker-paper: #F4F2EE;
 }
 :root[data-theme="dark"] {      /* também aplicado via prefers-color-scheme quando theme = system */
   --ink:        #F3F1EC;
@@ -41,18 +41,18 @@ Contraste calculado pela fórmula WCAG 2.x (script em node, 28/10/2026). Todas a
   --border:     rgb(255 255 255 / 0.12);
   --shadow:     0 6px 20px rgb(0 0 0 / 0.45);
 
-  --sticker-yellow: #3A3522; --sticker-pink:  #3D2A31; --sticker-blue:  #22313E;
-  --sticker-green:  #25342A; --sticker-lilac: #302A42; --sticker-paper: #2A2927;
+  --sticker-yellow: #37342A; --sticker-pink:  #383033; --sticker-blue:  #2B3137;
+  --sticker-green:  #2C322D; --sticker-lilac: #322F3A; --sticker-paper: #2A2927;
 }
 ```
 
 | Fundo | ink claro | muted claro | accent claro | ink escuro | muted escuro | accent escuro |
 |---|---|---|---|---|---|---|
-| yellow | 14,98 | 6,19 | 5,80 | 10,87 | 6,00 | 5,81 |
-| pink | 13,27 | 5,49 | 5,14 | 11,82 | 6,53 | 6,32 |
-| blue | 13,80 | 5,70 | 5,34 | 11,80 | 6,52 | 6,31 |
-| green | 14,16 | 5,86 | 5,49 | 11,60 | 6,41 | 6,20 |
-| lilac | 13,14 | 5,44 | 5,09 | 12,12 | 6,69 | 6,48 |
+| yellow | 14,04 | 5,81 | 5,44 | 11,03 | 6,09 | 5,89 |
+| pink | 13,08 | 5,41 | 5,07 | 11,35 | 6,27 | 6,07 |
+| blue | 13,44 | 5,56 | 5,20 | 11,65 | 6,43 | 6,23 |
+| green | 13,50 | 5,58 | 5,23 | 11,62 | 6,42 | 6,21 |
+| lilac | 13,08 | 5,41 | 5,07 | 11,60 | 6,41 | 6,20 |
 | paper | 14,90 | 6,16 | 5,77 | 12,88 | 7,11 | 6,88 |
 
 Qualquer cor nova precisa passar no mesmo cálculo antes de entrar.
