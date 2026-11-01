@@ -175,11 +175,20 @@ describe("NoteScreen", () => {
       expect(faded()).toBe(true);
     });
 
-    it("mostra de novo ao mover o mouse", () => {
+    it("mostra de novo ao mover o mouse de verdade", () => {
       renderScreen({ focusMode: true });
       fireEvent.change(editor(), { target: { value: "a" } });
-      fireEvent.mouseMove(editor());
+      fireEvent.mouseMove(editor(), { screenX: 10, screenY: 10 });
+      fireEvent.mouseMove(editor(), { screenX: 30, screenY: 12 });
       expect(faded()).toBe(false);
+    });
+
+    it("mousemove sem movimento (reflow do texto) não revela", () => {
+      renderScreen({ focusMode: true });
+      fireEvent.change(editor(), { target: { value: "a" } });
+      fireEvent.mouseMove(editor(), { screenX: 10, screenY: 10 });
+      fireEvent.mouseMove(editor(), { screenX: 10, screenY: 10 });
+      expect(faded()).toBe(true);
     });
 
     it("mostra de novo quando o editor perde o foco", () => {

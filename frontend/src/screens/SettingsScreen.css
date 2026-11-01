@@ -1,4 +1,4 @@
-.settings-screen {
+﻿.settings-screen {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -61,8 +61,7 @@
 }
 
 .settings-screen__label,
-.settings-screen__toggle,
-.settings-screen__about {
+.settings-screen__toggle {
   font-size: var(--text-sm);
   line-height: 1.45;
 }
@@ -88,17 +87,8 @@
   outline-offset: 2px;
 }
 
-.settings-screen__about {
+.settings-screen__error {
   margin: 0;
-  color: var(--ink-muted);
-}
-
-.settings-screen__about strong {
-  color: var(--ink);
-}
-
-.settings-screen__about code {
-  font-family: Consolas, "Cascadia Mono", monospace;
-  font-size: var(--text-xs);
-  word-break: break-all;
+  color: var(--danger);
+  font-size: var(--text-sm);
 }

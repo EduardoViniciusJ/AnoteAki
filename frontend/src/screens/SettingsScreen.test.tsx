@@ -28,7 +28,7 @@ async function renderScreen(props: Partial<SettingsScreenProps> = {}) {
   return all;
 }
 
-const recorder = () => screen.getByLabelText<HTMLInputElement>("Gravar atalho");
+const shortcutSelect = () => screen.getByRole("button", { name: "Atalho global" });
 const checkbox = (element: HTMLElement) => element as HTMLInputElement;
 
 beforeEach(() => {
@@ -49,9 +49,8 @@ describe("SettingsScreen", () => {
     await renderScreen();
     expect(screen.getByRole("button", { name: "Tema" }).textContent).toContain("Escuro");
     expect(screen.getByRole("button", { name: "Fonte do editor" }).textContent).toContain("Inter");
-    expect(checkbox(screen.getByLabelText(/Esconder post-its desafixados/)).checked).toBe(true);
     expect(checkbox(screen.getByLabelText(/Modo foco/)).checked).toBe(true);
-    expect(screen.getByText("Ctrl+Alt+K")).toBeTruthy();
+    expect(shortcutSelect().textContent).toContain("Ctrl+Alt+K (padrão)");
   });
 
   it("troca o tema na hora e o aplica", async () => {
@@ -73,13 +72,11 @@ describe("SettingsScreen", () => {
     );
   });
 
-  it("salva os interruptores", async () => {
+  it("salva o modo foco", async () => {
     await renderScreen();
-    await act(async () => fireEvent.click(screen.getByLabelText(/Esconder post-its/)));
-    expect(setSetting).toHaveBeenCalledWith("hideOnBlur", false);
-    expect(checkbox(screen.getByLabelText(/Esconder post-its/)).checked).toBe(false);
     await act(async () => fireEvent.click(screen.getByLabelText(/Modo foco/)));
     expect(setSetting).toHaveBeenCalledWith("focusMode", true);
+    expect(checkbox(screen.getByLabelText(/Modo foco/)).checked).toBe(true);
   });
 
   it("mostra um aviso quando não consegue salvar", async () => {
@@ -90,61 +87,47 @@ describe("SettingsScreen", () => {
     expect(checkbox(screen.getByLabelText(/Modo foco/)).checked).toBe(false);
   });
 
-  it("grava e salva um atalho novo", async () => {
+  it("escolhe um atalho novo na lista", async () => {
     await renderScreen();
-    fireEvent.keyDown(recorder(), { key: "Control", code: "ControlLeft", ctrlKey: true });
-    expect(recorder().value).toBe("");
-    fireEvent.keyDown(recorder(), { key: "N", code: "KeyN", ctrlKey: true, shiftKey: true });
-    expect(recorder().value).toBe("Ctrl+Shift+N");
-    await act(async () => fireEvent.keyDown(recorder(), { key: "Enter", code: "Enter" }));
-    expect(setSetting).toHaveBeenCalledWith("shortcut", "Ctrl+Shift+N");
-    expect(screen.getByText("Ctrl+Shift+N")).toBeTruthy();
-    expect(recorder().value).toBe("");
+    fireEvent.click(shortcutSelect());
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Ctrl+Shift+K" })));
+    expect(setSetting).toHaveBeenCalledWith("shortcut", "Ctrl+Shift+K");
+    expect(shortcutSelect().textContent).toContain("Ctrl+Shift+K");
   });
 
-  it("atalho em uso: avisa no campo e mantém o antigo", async () => {
+  it("atalho em uso: avisa e mantém o antigo", async () => {
     vi.mocked(setSetting).mockRejectedValue({ code: "SHORTCUT_UNAVAILABLE", message: "x" });
     await renderScreen();
-    fireEvent.keyDown(recorder(), { key: "j", code: "KeyJ", altKey: true });
-    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Salvar atalho" })));
+    fireEvent.click(shortcutSelect());
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Ctrl+Alt+A" })));
     expect(screen.getByRole("alert").textContent).toBe(
       "Esse atalho já está em uso por outro programa.",
     );
-    expect(screen.getByText("Ctrl+Alt+K")).toBeTruthy();
-    expect(recorder().value).toBe("Alt+J");
+    expect(shortcutSelect().textContent).toContain("Ctrl+Alt+K (padrão)");
   });
 
-  it("Esc cancela a gravação e, sem gravação, volta", async () => {
-    const props = await renderScreen();
-    fireEvent.keyDown(recorder(), { key: "k", code: "KeyK", ctrlKey: true, altKey: true });
-    fireEvent.keyDown(recorder(), { key: "Escape", code: "Escape" });
-    expect(recorder().value).toBe("");
-    expect(props.onBack).not.toHaveBeenCalled();
-    fireEvent.keyDown(recorder(), { key: "Escape", code: "Escape" });
-    expect(props.onBack).toHaveBeenCalled();
-  });
-
-  it("restaura o atalho padrão", async () => {
+  it("atalho fora da lista vira opção e o padrão pode voltar", async () => {
     vi.mocked(getShortcutStatus).mockResolvedValue({ shortcut: "Ctrl+Super+J", registered: false });
     await renderScreen();
-    expect(screen.getByText("Ctrl+Win+J")).toBeTruthy();
-    expect(screen.getByText(/não registrado/)).toBeTruthy();
+    expect(shortcutSelect().textContent).toContain("Ctrl+Super+J");
+    expect(screen.getByRole("alert").textContent).toContain("O Windows recusou");
+    fireEvent.click(shortcutSelect());
     await act(async () =>
-      fireEvent.click(screen.getByRole("button", { name: /Restaurar padrão/ })),
+      fireEvent.click(screen.getByRole("button", { name: "Ctrl+Alt+K (padrão)" })),
     );
     expect(setSetting).toHaveBeenCalledWith("shortcut", "Ctrl+Alt+K");
+  });
+
+  it("Esc volta para a nota", async () => {
+    const props = await renderScreen();
+    fireEvent.keyDown(shortcutSelect(), { key: "Escape" });
+    expect(props.onBack).toHaveBeenCalled();
   });
 
   it("botão voltar volta para a nota", async () => {
     const props = await renderScreen();
     fireEvent.click(screen.getByRole("button", { name: "Voltar (Esc)" }));
     expect(props.onBack).toHaveBeenCalled();
-  });
-
-  it("mostra onde ficam os dados", async () => {
-    await renderScreen();
-    expect(screen.getByText("%APPDATA%\\com.anoteaki.desktop")).toBeTruthy();
-    expect(screen.getByText(/Feito com Tauri \+ React/)).toBeTruthy();
   });
 
   it("avisa quando não consegue carregar", async () => {

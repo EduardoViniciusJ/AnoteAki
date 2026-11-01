@@ -85,7 +85,7 @@ export function NoteScreen({
     <section
       className="note-screen screen-enter"
       aria-label="Nota"
-      onMouseMove={focus.reveal}
+      onMouseMove={focus.onMouseMove}
       onBlur={focus.reveal}
       onKeyDown={(event) => {
         if (event.defaultPrevented) return;

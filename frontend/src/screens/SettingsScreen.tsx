@@ -1,7 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { IconButton } from "../components/IconButton";
 import { SelectMenu } from "../components/SelectMenu";
-import { ShortcutField } from "../components/ShortcutField";
 import { Toast } from "../components/Toast";
 import {
   type EditorFont,
@@ -26,6 +25,16 @@ const FONT_OPTIONS: readonly { value: EditorFont; label: string }[] = [
   { value: "inter", label: "Inter" },
   { value: "serif", label: "Serifada" },
   { value: "mono", label: "Mono" },
+];
+
+/** Combos the select offers: memorable and unlikely to clash with other apps. */
+const SHORTCUT_OPTIONS: readonly { value: string; label: string }[] = [
+  { value: "Ctrl+Alt+K", label: "Ctrl+Alt+K (padrão)" },
+  { value: "Ctrl+Alt+A", label: "Ctrl+Alt+A" },
+  { value: "Ctrl+Alt+N", label: "Ctrl+Alt+N" },
+  { value: "Ctrl+Alt+Space", label: "Ctrl+Alt+Espaço" },
+  { value: "Ctrl+Shift+K", label: "Ctrl+Shift+K" },
+  { value: "Ctrl+Shift+Space", label: "Ctrl+Shift+Espaço" },
 ];
 
 export interface SettingsScreenProps {
@@ -106,6 +115,10 @@ export function SettingsScreen({ onBack, onSettingsChange }: SettingsScreenProps
   } else if (!settings || !status) {
     body = <p className="settings-screen__message">Carregando…</p>;
   } else {
+    // A shortcut saved before this list existed still shows as its own option.
+    const shortcutOptions = SHORTCUT_OPTIONS.some((option) => option.value === status.shortcut)
+      ? SHORTCUT_OPTIONS
+      : [{ value: status.shortcut, label: status.shortcut }, ...SHORTCUT_OPTIONS];
     body = (
       <>
         <section className="settings-screen__section" aria-labelledby="settings-appearance">
@@ -140,12 +153,20 @@ export function SettingsScreen({ onBack, onSettingsChange }: SettingsScreenProps
           <h2 id="settings-shortcut" className="settings-screen__heading">
             Atalho global
           </h2>
-          <ShortcutField
-            current={status.shortcut}
-            registered={status.registered}
-            error={shortcutError}
-            onSubmit={saveShortcut}
-          />
+          <div className="settings-screen__row">
+            <span className="settings-screen__label">Mostrar e esconder os post-its</span>
+            <SelectMenu
+              label="Atalho global"
+              value={status.shortcut}
+              options={shortcutOptions}
+              onChange={(shortcut) => void saveShortcut(shortcut)}
+            />
+          </div>
+          {(shortcutError || !status.registered) && (
+            <p className="settings-screen__error" role="alert">
+              {shortcutError ?? "O Windows recusou esse atalho. Escolha outro."}
+            </p>
+          )}
         </section>
 
         <section className="settings-screen__section" aria-labelledby="settings-behavior">
@@ -155,32 +176,11 @@ export function SettingsScreen({ onBack, onSettingsChange }: SettingsScreenProps
           <label className="settings-screen__toggle">
             <input
               type="checkbox"
-              checked={settings.hideOnBlur}
-              onChange={(event) => void save("hideOnBlur", event.target.checked)}
-            />
-            Esconder post-its desafixados ao clicar fora
-          </label>
-          <label className="settings-screen__toggle">
-            <input
-              type="checkbox"
               checked={settings.focusMode}
               onChange={(event) => void save("focusMode", event.target.checked)}
             />
             Modo foco: esconder a barra e o rodapé enquanto digito
           </label>
-        </section>
-
-        <section className="settings-screen__section" aria-labelledby="settings-about">
-          <h2 id="settings-about" className="settings-screen__heading">
-            Sobre
-          </h2>
-          <p className="settings-screen__about">
-            <strong>AnoteAki</strong>
-            <br />
-            Feito com Tauri + React.
-            <br />
-            Seus dados ficam só neste computador, em <code>%APPDATA%\com.anoteaki.desktop</code>.
-          </p>
         </section>
       </>
     );
