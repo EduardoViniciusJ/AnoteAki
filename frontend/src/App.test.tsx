@@ -9,11 +9,14 @@ import {
   getWindowState,
   hideWindow,
   listNotes,
+  type MoveModePayload,
   type Note,
+  onMoveMode,
   onWindowShown,
   openLink,
   openNoteWindow,
   saveNote,
+  setMoveMode,
   setWindowPinned,
   setWindowSize,
   type WindowShownPayload,
@@ -27,17 +30,20 @@ vi.mock("./lib/api", () => ({
   getWindowState: vi.fn(),
   hideWindow: vi.fn(),
   listNotes: vi.fn(),
+  onMoveMode: vi.fn(),
   onWindowShown: vi.fn(),
   openLink: vi.fn(),
   openNoteWindow: vi.fn(),
   restoreNote: vi.fn(),
   saveNote: vi.fn(),
   searchNotes: vi.fn(),
+  setMoveMode: vi.fn(),
   setWindowPinned: vi.fn(),
   setWindowSize: vi.fn(),
 }));
 
 let emitWindowShown: (payload: WindowShownPayload) => void = () => {};
+let emitMoveMode: (payload: MoveModePayload) => void = () => {};
 
 function note(id: number, body: string): Note {
   const now = "2026-10-29T12:00:00.000Z";
@@ -86,6 +92,11 @@ beforeEach(() => {
   vi.mocked(saveNote).mockImplementation(async ({ body }) => note(1, body));
   vi.mocked(onWindowShown).mockImplementation(async (handler) => {
     emitWindowShown = handler;
+    return () => {};
+  });
+  vi.mocked(setMoveMode).mockResolvedValue(undefined);
+  vi.mocked(onMoveMode).mockImplementation(async (handler) => {
+    emitMoveMode = handler;
     return () => {};
   });
   vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
@@ -156,6 +167,14 @@ describe("App", () => {
     });
     expect(saveNote).toHaveBeenCalled();
     expect(closeNoteWindow).toHaveBeenCalledOnce();
+  });
+
+  it("Ctrl+M pede o modo mover; o evento liga em todas as janelas", async () => {
+    await renderApp();
+    fireEvent.keyDown(editor(), { key: "m", ctrlKey: true });
+    expect(setMoveMode).toHaveBeenCalledWith(true);
+    await act(async () => emitMoveMode({ on: true }));
+    expect(screen.getByText(/Arraste para mover/)).toBeTruthy();
   });
 
   it("Esc esconde todos os post-its", async () => {

@@ -39,6 +39,17 @@ struct WindowShown {
     reason: ShowReason,
 }
 
+/// Payload of the `move-mode` event, broadcast to every sticky note.
+#[derive(Clone, Serialize)]
+struct MoveMode {
+    on: bool,
+}
+
+/// Puts every open sticky note in (or out of) move mode, together.
+pub fn broadcast_move_mode(app: &AppHandle, on: bool) -> tauri::Result<()> {
+    app.emit("move-mode", MoveMode { on })
+}
+
 /// What a sticky note window shows. Returned by `get_window_state`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]

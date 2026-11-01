@@ -7,10 +7,12 @@ import {
   getShortcutStatus,
   getWindowState,
   hideWindow,
+  onMoveMode,
   onWindowShown,
   openLink,
   openNoteWindow,
   restoreNote,
+  setMoveMode,
   setWindowPinned,
   setWindowSize,
 } from "./lib/api";
@@ -42,6 +44,7 @@ export function App() {
   const [notice, setNotice] = useState<string | null>(null);
   // Every sticky note starts pinned; the real value comes from get_window_state.
   const [pinned, setPinned] = useState(true);
+  const [moving, setMoving] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   // Read inside callbacks that must not re-subscribe on every keystroke.
@@ -107,6 +110,14 @@ export function App() {
       unlisten.then((stop) => stop()).catch(() => {});
     };
   }, [focusNote]);
+
+  // Move mode is shared: any sticky note's Ctrl+M switches all of them.
+  useEffect(() => {
+    const unlisten = onMoveMode(({ on }) => setMoving(on));
+    return () => {
+      unlisten.then((stop) => stop()).catch(() => {});
+    };
+  }, []);
 
   // Query (not an event): an event emitted before listen() would be lost.
   useEffect(() => {
@@ -228,6 +239,11 @@ export function App() {
       }}
       onSizeChange={(size) => {
         setWindowSize(size).catch(() => setWarning("Não foi possível mudar o tamanho."));
+      }}
+      moving={moving}
+      onMovingChange={(on) => {
+        // If the broadcast fails, at least this sticky note switches.
+        setMoveMode(on).catch(() => setMoving(on));
       }}
       onOpenLink={(url) => {
         openLink(url).catch(() => setWarning("Não foi possível abrir o link."));

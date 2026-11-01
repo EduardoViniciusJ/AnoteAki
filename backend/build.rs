@@ -9,6 +9,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "close_note_window",
             "set_window_pinned",
             "set_window_size",
+            "set_move_mode",
             "open_link",
             "get_last_note",
             "get_note",

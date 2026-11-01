@@ -1,4 +1,4 @@
-import { type Ref, useState } from "react";
+import type { Ref } from "react";
 import { ColorMenu } from "../components/ColorMenu";
 import { IconButton } from "../components/IconButton";
 import { NoteEditor } from "../components/NoteEditor";
@@ -45,6 +45,9 @@ export interface NoteScreenProps {
   pinned?: boolean;
   onPinnedChange?: (pinned: boolean) => void;
   onSizeChange?: (size: WindowSize) => void;
+  /** Move mode is shared: Ctrl+M asks the app and every sticky note follows. */
+  moving?: boolean;
+  onMovingChange?: (on: boolean) => void;
   /** Ctrl+click on a link in the text. */
   onOpenLink?: (url: string) => void;
   titleRef?: Ref<HTMLInputElement>;
@@ -76,13 +79,13 @@ export function NoteScreen({
   pinned = true,
   onPinnedChange = () => {},
   onSizeChange = () => {},
+  moving = false,
+  onMovingChange = () => {},
   onOpenLink,
   titleRef,
   editorRef,
 }: NoteScreenProps) {
   const empty = !heading.trim() && !body.trim();
-  // Move mode (Ctrl+M): the whole sticky note becomes a drag handle.
-  const [moving, setMoving] = useState(false);
   return (
     <section
       className="note-screen screen-enter"
@@ -94,7 +97,7 @@ export function NoteScreen({
         const ctrl = event.ctrlKey && !event.altKey;
         if (event.key === "Escape") {
           event.preventDefault();
-          if (moving) setMoving(false);
+          if (moving) onMovingChange(false);
           else onEscape();
         } else if (ctrl && event.shiftKey && key === "c") {
           event.preventDefault();
@@ -104,7 +107,7 @@ export function NoteScreen({
           if (!empty) onCopyMarkdown();
         } else if (ctrl && key === "m") {
           event.preventDefault();
-          setMoving((mode) => !mode);
+          onMovingChange(!moving);
         } else if (ctrl && key === "n") {
           event.preventDefault();
           onNewNote();
@@ -123,7 +126,6 @@ export function NoteScreen({
         </div>
       )}
       <header className="note-screen__toolbar" data-tauri-drag-region="">
-
         {readOnly && (
           <span className="note-screen__trash">
             Na lixeira

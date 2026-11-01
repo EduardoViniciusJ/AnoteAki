@@ -158,22 +158,25 @@ describe("NoteScreen", () => {
   describe("modo mover", () => {
     const hint = () => screen.queryByText(/Arraste para mover/);
 
-    it("Ctrl+M liga e desliga", () => {
-      renderScreen();
+    it("Ctrl+M pede o modo mover (todas as janelas seguem juntas)", () => {
+      const onMovingChange = vi.fn();
+      renderScreen({ onMovingChange });
       fireEvent.keyDown(editor(), { key: "m", ctrlKey: true });
-      expect(hint()).toBeTruthy();
+      expect(onMovingChange).toHaveBeenCalledWith(true);
+      onMovingChange.mockClear();
+      cleanup();
+      renderScreen({ moving: true, onMovingChange });
       fireEvent.keyDown(editor(), { key: "m", ctrlKey: true });
-      expect(hint()).toBeNull();
+      expect(onMovingChange).toHaveBeenCalledWith(false);
     });
 
-    it("Esc sai do modo mover sem esconder a nota", () => {
-      const props = renderScreen();
-      fireEvent.keyDown(editor(), { key: "m", ctrlKey: true });
+    it("ligado: mostra a dica; Esc sai sem esconder a nota", () => {
+      const onMovingChange = vi.fn();
+      const props = renderScreen({ moving: true, onMovingChange });
+      expect(hint()).toBeTruthy();
       fireEvent.keyDown(editor(), { key: "Escape" });
-      expect(hint()).toBeNull();
+      expect(onMovingChange).toHaveBeenCalledWith(false);
       expect(props.onEscape).not.toHaveBeenCalled();
-      fireEvent.keyDown(editor(), { key: "Escape" });
-      expect(props.onEscape).toHaveBeenCalled();
     });
 
     it("Ctrl+Shift+M continua copiando como Markdown", () => {

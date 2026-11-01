@@ -15,6 +15,7 @@
     "allow-close-note-window",
     "allow-set-window-pinned",
     "allow-set-window-size",
+    "allow-set-move-mode",
     "allow-open-link",
     "allow-get-last-note",
     "allow-get-note",

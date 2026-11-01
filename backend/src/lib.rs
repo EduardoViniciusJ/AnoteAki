@@ -97,6 +97,7 @@ pub fn run() -> tauri::Result<()> {
             commands::window::close_note_window,
             commands::window::set_window_pinned,
             commands::window::set_window_size,
+            commands::window::set_move_mode,
             commands::links::open_link,
             commands::notes::get_last_note,
             commands::notes::get_note,

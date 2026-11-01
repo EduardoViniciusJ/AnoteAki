@@ -147,9 +147,18 @@ export const setWindowPinned = (pinned: boolean) => call<void>("set_window_pinne
 export const setWindowSize = (size: WindowSize) => call<void>("set_window_size", { size });
 /** Opens an http/https URL in the default browser (validated in Rust). */
 export const openLink = (url: string) => call<void>("open_link", { url });
+/** Move mode for every open sticky note at once: Rust broadcasts `move-mode`. */
+export const setMoveMode = (on: boolean) => call<void>("set_move_mode", { on });
 
 // Events (Rust → UI)
 export const onWindowShown = (
   handler: (payload: WindowShownPayload) => void,
 ): Promise<UnlistenFn> =>
   listen<WindowShownPayload>("window-shown", (event) => handler(event.payload));
+
+export interface MoveModePayload {
+  on: boolean;
+}
+
+export const onMoveMode = (handler: (payload: MoveModePayload) => void): Promise<UnlistenFn> =>
+  listen<MoveModePayload>("move-mode", (event) => handler(event.payload));

@@ -72,6 +72,12 @@ pub async fn set_window_size(
     window::resize(&db, &window, WindowSize::parse(&size)?)
 }
 
+/// Turns move mode on or off in every open sticky note at once (Ctrl+M).
+#[tauri::command]
+pub async fn set_move_mode(app: AppHandle, on: bool) -> Result<(), AppError> {
+    window::broadcast_move_mode(&app, on).map_err(AppError::from)
+}
+
 /// Closes the calling sticky note. Its note stays in the history.
 #[tauri::command]
 pub async fn close_note_window(
