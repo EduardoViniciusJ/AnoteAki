@@ -117,20 +117,6 @@
 
 .history-screen__sort {
   margin-left: auto;
-  height: var(--icon-button);
-  padding: 0 var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-control);
-  background: var(--surface-2);
-  color: var(--ink);
-  font: inherit;
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
-
-.history-screen__sort:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
 }
 
 .history-screen__empty-trash {
