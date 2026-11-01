@@ -37,12 +37,42 @@ impl Theme {
     }
 }
 
+/// Font of the note text. Local font stacks only: nothing comes from the network.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum EditorFont {
+    Inter,
+    Serif,
+    Mono,
+}
+
+impl EditorFont {
+    pub fn parse(value: &str) -> Result<Self, AppError> {
+        match value {
+            "inter" => Ok(Self::Inter),
+            "serif" => Ok(Self::Serif),
+            "mono" => Ok(Self::Mono),
+            _ => Err(AppError::InvalidInput("Fonte inválida.")),
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Inter => "inter",
+            Self::Serif => "serif",
+            Self::Mono => "mono",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
     pub theme: Theme,
     pub shortcut: String,
     pub hide_on_blur: bool,
+    pub editor_font: EditorFont,
+    pub focus_mode: bool,
 }
 
 impl Default for Settings {
@@ -51,6 +81,8 @@ impl Default for Settings {
             theme: Theme::System,
             shortcut: DEFAULT_SHORTCUT.to_owned(),
             hide_on_blur: true,
+            editor_font: EditorFont::Inter,
+            focus_mode: false,
         }
     }
 }
@@ -70,6 +102,8 @@ pub enum Change {
     Theme(Theme),
     Shortcut(String),
     HideOnBlur(bool),
+    EditorFont(EditorFont),
+    FocusMode(bool),
 }
 
 impl Change {
@@ -84,7 +118,11 @@ impl Change {
                 Ok(Self::Shortcut(text.to_owned()))
             }
             ("hideOnBlur", SettingValue::Bool(on)) => Ok(Self::HideOnBlur(on)),
-            ("theme" | "shortcut" | "hideOnBlur", _) => {
+            ("editorFont", SettingValue::Text(text)) => {
+                Ok(Self::EditorFont(EditorFont::parse(&text)?))
+            }
+            ("focusMode", SettingValue::Bool(on)) => Ok(Self::FocusMode(on)),
+            ("theme" | "shortcut" | "hideOnBlur" | "editorFont" | "focusMode", _) => {
                 Err(AppError::InvalidInput("Tipo de valor inválido."))
             }
             _ => Err(AppError::InvalidInput("Configuração desconhecida.")),
@@ -108,15 +146,34 @@ pub fn load(conn: &Connection) -> Result<Settings, AppError> {
                 }
             }
             "shortcut" if !value.is_empty() => settings.shortcut = value,
-            "hideOnBlur" => match value.as_str() {
-                "true" => settings.hide_on_blur = true,
-                "false" => settings.hide_on_blur = false,
-                _ => {}
-            },
+            "hideOnBlur" => {
+                if let Some(on) = parse_bool(&value) {
+                    settings.hide_on_blur = on;
+                }
+            }
+            "editorFont" => {
+                if let Ok(font) = EditorFont::parse(&value) {
+                    settings.editor_font = font;
+                }
+            }
+            "focusMode" => {
+                if let Some(on) = parse_bool(&value) {
+                    settings.focus_mode = on;
+                }
+            }
             _ => {}
         }
     }
     Ok(settings)
+}
+
+/// Booleans are stored as "true"/"false"; anything else is invalid.
+fn parse_bool(value: &str) -> Option<bool> {
+    match value {
+        "true" => Some(true),
+        "false" => Some(false),
+        _ => None,
+    }
 }
 
 pub fn store(conn: &Connection, change: &Change) -> Result<(), AppError> {
@@ -124,6 +181,8 @@ pub fn store(conn: &Connection, change: &Change) -> Result<(), AppError> {
         Change::Theme(theme) => ("theme", theme.as_str().to_owned()),
         Change::Shortcut(shortcut) => ("shortcut", shortcut.clone()),
         Change::HideOnBlur(on) => ("hideOnBlur", on.to_string()),
+        Change::EditorFont(font) => ("editorFont", font.as_str().to_owned()),
+        Change::FocusMode(on) => ("focusMode", on.to_string()),
     };
     conn.execute(
         "INSERT INTO settings (key, value) VALUES (?1, ?2) \
@@ -155,10 +214,14 @@ mod tests {
         store(&conn, &Change::Shortcut("Ctrl+Shift+N".to_owned())).unwrap();
         store(&conn, &Change::HideOnBlur(false)).unwrap();
         store(&conn, &Change::Theme(Theme::Light)).unwrap();
+        store(&conn, &Change::EditorFont(EditorFont::Mono)).unwrap();
+        store(&conn, &Change::FocusMode(true)).unwrap();
         let settings = load(&conn).unwrap();
         assert_eq!(settings.theme, Theme::Light);
         assert_eq!(settings.shortcut, "Ctrl+Shift+N");
         assert!(!settings.hide_on_blur);
+        assert_eq!(settings.editor_font, EditorFont::Mono);
+        assert!(settings.focus_mode);
     }
 
     #[test]
@@ -166,7 +229,7 @@ mod tests {
         let conn = open_in_memory();
         conn.execute_batch(
             "INSERT INTO settings (key, value) VALUES ('theme', 'neon'), \
-             ('hideOnBlur', 'maybe'), ('shortcut', ''), ('autostart', 'true')",
+             ('hideOnBlur', 'maybe'), ('shortcut', ''), ('autostart', 'true'),              ('editorFont', 'comic'), ('focusMode', '1')",
         )
         .unwrap();
         assert_eq!(load(&conn).unwrap(), Settings::default());
@@ -186,6 +249,14 @@ mod tests {
             Change::parse("hideOnBlur", SettingValue::Bool(false)).unwrap(),
             Change::HideOnBlur(false)
         );
+        assert_eq!(
+            Change::parse("editorFont", text("serif")).unwrap(),
+            Change::EditorFont(EditorFont::Serif)
+        );
+        assert_eq!(
+            Change::parse("focusMode", SettingValue::Bool(true)).unwrap(),
+            Change::FocusMode(true)
+        );
     }
 
     #[test]
@@ -197,6 +268,9 @@ mod tests {
             Change::parse("shortcut", SettingValue::Bool(true)),
             Change::parse("shortcut", text("   ")),
             Change::parse("shortcut", text(&"K".repeat(SHORTCUT_MAX_CHARS + 1))),
+            Change::parse("editorFont", text("comic")),
+            Change::parse("editorFont", SettingValue::Bool(true)),
+            Change::parse("focusMode", text("true")),
             Change::parse("autostart", SettingValue::Bool(true)),
         ];
         for case in cases {
@@ -218,7 +292,7 @@ mod tests {
         let json = serde_json::to_string(&Settings::default()).unwrap();
         assert_eq!(
             json,
-            r#"{"theme":"system","shortcut":"Ctrl+Alt+K","hideOnBlur":true}"#
+            r#"{"theme":"system","shortcut":"Ctrl+Alt+K","hideOnBlur":true,"editorFont":"inter","focusMode":false}"#
         );
     }
 }

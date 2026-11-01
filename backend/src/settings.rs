@@ -46,8 +46,10 @@ pub fn apply(app: &AppHandle, change: Change) -> Result<Settings, AppError> {
             db.with(|conn| settings::store(conn, &change))?;
             app.state::<HideOnBlur>().set(*on);
         }
-        // The theme is applied by the UI.
-        Change::Theme(_) => db.with(|conn| settings::store(conn, &change))?,
+        // Theme, font and focus mode are applied by the UI.
+        Change::Theme(_) | Change::EditorFont(_) | Change::FocusMode(_) => {
+            db.with(|conn| settings::store(conn, &change))?
+        }
     }
     db.with(|conn| settings::load(conn))
 }
