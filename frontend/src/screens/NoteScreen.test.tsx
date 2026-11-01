@@ -154,4 +154,33 @@ describe("NoteScreen", () => {
     renderScreen({ body: "x", notice: "Copiado" });
     expect(screen.getByRole("status").textContent).toContain("Copiado");
   });
+
+  describe("modo mover", () => {
+    const hint = () => screen.queryByText(/Arraste para mover/);
+
+    it("Ctrl+M liga e desliga", () => {
+      renderScreen();
+      fireEvent.keyDown(editor(), { key: "m", ctrlKey: true });
+      expect(hint()).toBeTruthy();
+      fireEvent.keyDown(editor(), { key: "m", ctrlKey: true });
+      expect(hint()).toBeNull();
+    });
+
+    it("Esc sai do modo mover sem esconder a nota", () => {
+      const props = renderScreen();
+      fireEvent.keyDown(editor(), { key: "m", ctrlKey: true });
+      fireEvent.keyDown(editor(), { key: "Escape" });
+      expect(hint()).toBeNull();
+      expect(props.onEscape).not.toHaveBeenCalled();
+      fireEvent.keyDown(editor(), { key: "Escape" });
+      expect(props.onEscape).toHaveBeenCalled();
+    });
+
+    it("Ctrl+Shift+M continua copiando como Markdown", () => {
+      const props = renderScreen({ body: "texto" });
+      fireEvent.keyDown(editor(), { key: "m", ctrlKey: true, shiftKey: true });
+      expect(props.onCopyMarkdown).toHaveBeenCalled();
+      expect(hint()).toBeNull();
+    });
+  });
 });

@@ -55,6 +55,15 @@ body {
   }
 }
 
+/* Empty toolbar areas move the window: the hand cursor says so. */
+[data-tauri-drag-region] {
+  cursor: grab;
+}
+
+[data-tauri-drag-region]:active {
+  cursor: grabbing;
+}
+
 @media (prefers-reduced-motion: reduce) {
   #app.is-opening,
   .screen-enter {

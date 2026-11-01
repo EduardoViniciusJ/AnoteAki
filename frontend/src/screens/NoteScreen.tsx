@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import { type Ref, useState } from "react";
 import { ColorMenu } from "../components/ColorMenu";
 import { IconButton } from "../components/IconButton";
 import { NoteEditor } from "../components/NoteEditor";
@@ -81,6 +81,8 @@ export function NoteScreen({
   editorRef,
 }: NoteScreenProps) {
   const empty = !heading.trim() && !body.trim();
+  // Move mode (Ctrl+M): the whole sticky note becomes a drag handle.
+  const [moving, setMoving] = useState(false);
   return (
     <section
       className="note-screen screen-enter"
@@ -92,13 +94,17 @@ export function NoteScreen({
         const ctrl = event.ctrlKey && !event.altKey;
         if (event.key === "Escape") {
           event.preventDefault();
-          onEscape();
+          if (moving) setMoving(false);
+          else onEscape();
         } else if (ctrl && event.shiftKey && key === "c") {
           event.preventDefault();
           if (!empty) onCopy();
         } else if (ctrl && event.shiftKey && key === "m") {
           event.preventDefault();
           if (!empty) onCopyMarkdown();
+        } else if (ctrl && key === "m") {
+          event.preventDefault();
+          setMoving((mode) => !mode);
         } else if (ctrl && key === "n") {
           event.preventDefault();
           onNewNote();
@@ -111,7 +117,13 @@ export function NoteScreen({
         }
       }}
     >
+      {moving && (
+        <div className="note-screen__move" data-tauri-drag-region="">
+          <span className="note-screen__move-hint">Arraste para mover · Esc ou Ctrl+M sai</span>
+        </div>
+      )}
       <header className="note-screen__toolbar" data-tauri-drag-region="">
+
         {readOnly && (
           <span className="note-screen__trash">
             Na lixeira
