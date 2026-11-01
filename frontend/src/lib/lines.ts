@@ -52,13 +52,3 @@ export function moveLine(text: string, caret: number, direction: "up" | "down"):
     selectionEnd: position,
   };
 }
-
-/** Inserts `insert` at the caret (replacing the selection); the caret ends after it. */
-export function insertText(text: string, start: number, end: number, insert: string): LineEdit {
-  const position = start + insert.length;
-  return {
-    text: text.slice(0, start) + insert + text.slice(end),
-    selectionStart: position,
-    selectionEnd: position,
-  };
-}

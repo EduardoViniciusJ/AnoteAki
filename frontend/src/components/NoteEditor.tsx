@@ -1,6 +1,5 @@
 import type { KeyboardEvent, Ref } from "react";
-import { formatStamp } from "../lib/dates";
-import { duplicateLine, insertText, type LineEdit, moveLine } from "../lib/lines";
+import { duplicateLine, type LineEdit, moveLine } from "../lib/lines";
 import "./NoteEditor.css";
 
 export interface NoteEditorProps {
@@ -18,36 +17,30 @@ export function NoteEditor({
   readOnly = false,
   ref,
 }: NoteEditorProps) {
-  // Replacing the whole value resets the native undo stack (trade-off of a
-  // controlled textarea); Ctrl+; avoids that via execCommand when available.
+  // The DOM value and the caret are set right away: waiting for the React
+  // re-render leaves the caret at the end for one frame, and a held key
+  // (repeat) would then edit the wrong line.
   const apply = (editor: HTMLTextAreaElement, edit: LineEdit) => {
+    editor.value = edit.text;
+    editor.setSelectionRange(edit.selectionStart, edit.selectionEnd);
     onChange(edit.text);
-    // After React re-renders with the new value.
-    requestAnimationFrame(() => {
-      editor.setSelectionRange(edit.selectionStart, edit.selectionEnd);
-    });
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (readOnly || event.defaultPrevented) return;
     const editor = event.currentTarget;
-    const { selectionStart, selectionEnd } = editor;
+    // editor.value, not the prop: on key repeat the prop may be one render behind.
+    const text = editor.value;
+    const { selectionStart } = editor;
     // Ctrl+Alt is AltGr on ABNT2 keyboards: it types characters, so it is not a shortcut.
     const ctrl = event.ctrlKey && !event.altKey;
     const alt = event.altKey && !event.ctrlKey;
     if (ctrl && event.key.toLowerCase() === "d") {
       event.preventDefault();
-      apply(editor, duplicateLine(value, selectionStart));
-    } else if (ctrl && event.key === ";") {
-      event.preventDefault();
-      const stamp = formatStamp(new Date());
-      // insertText keeps the native undo stack; jsdom (tests) has no execCommand.
-      if (!document.execCommand?.("insertText", false, stamp)) {
-        apply(editor, insertText(value, selectionStart, selectionEnd, stamp));
-      }
+      apply(editor, duplicateLine(text, selectionStart));
     } else if (alt && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
       event.preventDefault();
-      const edit = moveLine(value, selectionStart, event.key === "ArrowUp" ? "up" : "down");
+      const edit = moveLine(text, selectionStart, event.key === "ArrowUp" ? "up" : "down");
       if (edit) apply(editor, edit);
     }
   };

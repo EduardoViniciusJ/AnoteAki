@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayLabel, formatStamp, formatTime, formatWhen, groupByDay } from "./dates";
+import { dayLabel, formatTime, formatWhen, groupByDay } from "./dates";
 
 // Dates built in local time and converted to ISO, like the ones from Rust:
 // the tests pass in any machine time zone.
@@ -66,12 +66,5 @@ describe("formatação de horário", () => {
     const now = new Date(2026, 9, 29, 18);
     expect(formatWhen(at(2026, 10, 29, 14, 3), now)).toBe("14:03");
     expect(formatWhen(at(2026, 10, 3, 14, 3), now)).toBe("03/10");
-  });
-});
-
-describe("formatStamp", () => {
-  it("dd/MM/yyyy HH:mm com zeros à esquerda", () => {
-    expect(formatStamp(new Date(2026, 9, 31, 14, 5))).toBe("31/10/2026 14:05");
-    expect(formatStamp(new Date(2027, 0, 2, 9, 7))).toBe("02/01/2027 09:07");
   });
 });

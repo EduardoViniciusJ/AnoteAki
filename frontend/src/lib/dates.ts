@@ -53,13 +53,6 @@ export function groupByDay<T extends { updatedAt: string }>(items: T[], now: Dat
   return groups;
 }
 
-/** "31/10/2026 14:05", inserted in the text by Ctrl+; */
-export function formatStamp(now: Date): string {
-  const pad = (value: number) => String(value).padStart(2, "0");
-  const date = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
-  return `${date} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
-}
-
 /** "14:03" */
 export function formatTime(iso: string): string {
   return timeFormat.format(new Date(iso));

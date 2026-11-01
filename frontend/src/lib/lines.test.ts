@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { duplicateLine, insertText, moveLine } from "./lines";
+import { duplicateLine, moveLine } from "./lines";
 
 describe("duplicateLine", () => {
   it("duplica a linha do cursor abaixo dela", () => {
@@ -67,19 +67,5 @@ describe("moveLine", () => {
       selectionStart: 0,
       selectionEnd: 0,
     });
-  });
-});
-
-describe("insertText", () => {
-  it("insere no cursor e o deixa depois do texto", () => {
-    expect(insertText("ab", 1, 1, "31/10/2026 14:05")).toEqual({
-      text: "a31/10/2026 14:05b",
-      selectionStart: 17,
-      selectionEnd: 17,
-    });
-  });
-
-  it("substitui a seleção", () => {
-    expect(insertText("abc", 1, 2, "X").text).toBe("aXc");
   });
 });
