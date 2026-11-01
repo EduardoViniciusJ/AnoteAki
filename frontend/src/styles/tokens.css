@@ -16,11 +16,11 @@
     0 6px 20px light-dark(rgb(0 0 0 / 0.14), rgb(0 0 0 / 0.45)),
     0 1px 3px light-dark(rgb(0 0 0 / 0.08), transparent);
 
-  --sticker-yellow: light-dark(#fff4b8, #3a3522);
-  --sticker-pink: light-dark(#ffdde5, #3d2a31);
-  --sticker-blue: light-dark(#d9ecff, #22313e);
-  --sticker-green: light-dark(#ddf3d5, #25342a);
-  --sticker-lilac: light-dark(#e9e0ff, #302a42);
+  --sticker-yellow: light-dark(#f2ecd2, #37342a);
+  --sticker-pink: light-dark(#f0e0e4, #383033);
+  --sticker-blue: light-dark(#dfe8f0, #2b3137);
+  --sticker-green: light-dark(#e1eadd, #2c322d);
+  --sticker-lilac: light-dark(#e6e2ef, #322f3a);
   --sticker-paper: light-dark(#f4f2ee, #2a2927);
 
   --font-ui: "Inter Variable", "Segoe UI", system-ui, sans-serif;
