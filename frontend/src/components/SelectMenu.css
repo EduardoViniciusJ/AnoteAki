@@ -1,0 +1,75 @@
+.select-menu {
+  position: relative;
+}
+
+.select-menu__button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--icon-button);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.select-menu__button:disabled {
+  color: var(--ink-muted);
+  cursor: default;
+}
+
+.select-menu__chevron {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.select-menu__panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 10;
+  display: flex;
+  min-width: 100%;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--sticker-paper);
+  box-shadow: var(--shadow);
+}
+
+.select-menu__option {
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.select-menu__option:hover {
+  background: var(--surface-2);
+}
+
+.select-menu__option[aria-pressed="true"] {
+  font-weight: 600;
+}
+
+.select-menu__button:focus-visible,
+.select-menu__option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}

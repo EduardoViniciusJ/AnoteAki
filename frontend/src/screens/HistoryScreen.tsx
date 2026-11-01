@@ -10,6 +10,7 @@ import {
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { IconButton } from "../components/IconButton";
 import { NoteListItem, type NoteListItemAction } from "../components/NoteListItem";
+import { SelectMenu } from "../components/SelectMenu";
 import { Toast } from "../components/Toast";
 import {
   deleteNote,
@@ -70,11 +71,11 @@ const COLOR_NAMES: Record<StickerColor, string> = {
   paper: "papel",
 };
 
-const SORT_LABELS: Record<NoteSort, string> = {
-  updated: "Editadas",
-  created: "Criadas",
-  title: "Título (A–Z)",
-};
+const SORT_OPTIONS: { value: NoteSort; label: string }[] = [
+  { value: "updated", label: "Editadas" },
+  { value: "created", label: "Criadas" },
+  { value: "title", label: "Título (A–Z)" },
+];
 
 /** Clipboard text: typed title, a blank line, then the body (same shape as the Note screen). */
 function fullNoteText(note: Note): string {
@@ -675,19 +676,14 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
             ))}
           </fieldset>
         )}
-        <select
+        <SelectMenu
           className="history-screen__sort"
-          aria-label="Ordenar"
+          label="Ordenar"
           value={sort}
+          options={SORT_OPTIONS}
+          onChange={setSort}
           disabled={Boolean(searchTerm)}
-          onChange={(event) => setSort(event.target.value as NoteSort)}
-        >
-          {(Object.keys(SORT_LABELS) as NoteSort[]).map((value) => (
-            <option key={value} value={value}>
-              {SORT_LABELS[value]}
-            </option>
-          ))}
-        </select>
+        />
         {scope === "trash" && items.length > 0 && (
           <button
             type="button"
