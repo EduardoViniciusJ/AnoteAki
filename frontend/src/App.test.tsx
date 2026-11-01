@@ -151,6 +151,28 @@ describe("App", () => {
     expect(hideWindow).toHaveBeenCalledOnce();
   });
 
+  it("Esc não esconde quando salvar falha", async () => {
+    vi.mocked(saveNote).mockRejectedValue(new Error("db"));
+    await renderApp();
+    fireEvent.change(editor(), { target: { value: "sem salvar" } });
+    await act(async () => {
+      fireEvent.keyDown(editor(), { key: "Escape" });
+    });
+    expect(hideWindow).not.toHaveBeenCalled();
+    expect(editor().value).toBe("sem salvar");
+  });
+
+  it("histórico não abre quando salvar falha", async () => {
+    vi.mocked(saveNote).mockRejectedValue(new Error("db"));
+    await renderApp();
+    fireEvent.change(editor(), { target: { value: "sem salvar" } });
+    await act(async () => {
+      fireEvent.keyDown(editor(), { key: "h", ctrlKey: true });
+    });
+    expect(screen.queryByLabelText("Buscar notas")).toBeNull();
+    expect(editor().value).toBe("sem salvar");
+  });
+
   it("abrir uma nota do histórico abre o post-it dela", async () => {
     vi.mocked(listNotes).mockResolvedValue([
       {

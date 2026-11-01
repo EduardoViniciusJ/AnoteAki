@@ -199,8 +199,11 @@ export function App() {
           });
       }}
       onEscape={() => {
-        // Could not hide: the windows stay open, nothing is lost.
-        void flush().then(() => hideWindow().catch(() => {}));
+        // Hide only after saving (like "×"): hiding on a failed save would
+        // bury the error while the text exists only in memory.
+        void flush().then((saved) => {
+          if (saved) hideWindow().catch(() => {});
+        });
       }}
       onNewNote={() => {
         void openNoteWindow(null).catch(() => {
@@ -221,9 +224,11 @@ export function App() {
         focusNote();
       }}
       onOpenHistory={() => {
-        // Save before switching screens (PRD §12) so the history lists the new text.
-        // If it fails, the text stays in the draft and the status shows the error.
-        void flush().then(() => setScreen("history"));
+        // Save before switching screens (PRD §12) so the history lists the new
+        // text. On failure the editor stays open, with the error in the status.
+        void flush().then((saved) => {
+          if (saved) setScreen("history");
+        });
       }}
       onOpenSettings={openSettings}
       focusMode={focusMode}
