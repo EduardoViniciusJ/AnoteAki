@@ -12,18 +12,20 @@ import {
   openLink,
   openNoteWindow,
   restoreNote,
+  type Settings,
   setMoveMode,
   setWindowPinned,
   setWindowSize,
 } from "./lib/api";
 import { copyText } from "./lib/clipboard";
 import { noteAsMarkdown, noteAsText } from "./lib/text";
-import { applyTheme, playOpen } from "./lib/theme";
+import { applyEditorFont, applyTheme, playOpen } from "./lib/theme";
 import { type Look, useNoteDraft } from "./lib/useNoteDraft";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { NoteScreen } from "./screens/NoteScreen";
+import { SettingsScreen } from "./screens/SettingsScreen";
 
-type Screen = "note" | "history";
+type Screen = "note" | "history" | "settings";
 
 /** How long a confirmation like "Copiado" stays on screen. */
 const NOTICE_MS = 2000;
@@ -41,6 +43,9 @@ export function App() {
   const { flush, replace } = draft;
   const [screen, setScreen] = useState<Screen>("note");
   const [warning, setWarning] = useState<string | null>(null);
+  // Kept apart from `warning`: only this one has the "Configurações" action.
+  const [shortcutWarning, setShortcutWarning] = useState<string | null>(null);
+  const [focusMode, setFocusMode] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   // Every sticky note starts pinned; the real value comes from get_window_state.
   const [pinned, setPinned] = useState(true);
@@ -86,20 +91,29 @@ export function App() {
     };
   }, [replace, focusNote]);
 
-  // The theme lives in the settings. Reading it again on focus brings in a change
-  // made in another sticky note window.
+  // Theme, font and focus mode come from the settings. Theme and font paint the
+  // whole window; the theme is applied by the Settings screen itself.
+  const applySettings = useCallback((settings: Settings) => {
+    applyEditorFont(settings.editorFont);
+    setFocusMode(settings.focusMode);
+  }, []);
+
+  // Reading the settings again on focus brings in a change made in another window.
   useEffect(() => {
-    const loadTheme = () => {
+    const loadSettings = () => {
       getSettings()
-        .then((settings) => applyTheme(settings.theme))
+        .then((settings) => {
+          applyTheme(settings.theme);
+          applySettings(settings);
+        })
         .catch(() => {
           // Without the settings the theme follows Windows (tokens.css).
         });
     };
-    loadTheme();
-    window.addEventListener("focus", loadTheme);
-    return () => window.removeEventListener("focus", loadTheme);
-  }, []);
+    loadSettings();
+    window.addEventListener("focus", loadSettings);
+    return () => window.removeEventListener("focus", loadSettings);
+  }, [applySettings]);
 
   useEffect(() => {
     const unlisten = onWindowShown(() => {
@@ -125,8 +139,9 @@ export function App() {
     getShortcutStatus()
       .then(({ shortcut, registered }) => {
         if (!active || registered) return;
-        // The Settings screen (T52) adds an action button here.
-        setWarning(`O atalho ${shortcut} está em uso por outro app. Troque-o em Configurações.`);
+        setShortcutWarning(
+          `O atalho ${shortcut} está em uso por outro app. Troque-o em Configurações.`,
+        );
       })
       .catch(() => {
         // Without the status there is no warning to show; the app still works.
@@ -152,6 +167,15 @@ export function App() {
     setScreen("note");
     focusNote();
   };
+
+  const openSettings = () => {
+    setShortcutWarning(null);
+    setScreen("settings");
+  };
+
+  if (screen === "settings") {
+    return <SettingsScreen onBack={backToNote} onSettingsChange={applySettings} />;
+  }
 
   if (screen === "history") {
     return (
@@ -223,10 +247,18 @@ export function App() {
           if (saved) setScreen("history");
         });
       }}
+      onOpenSettings={openSettings}
+      focusMode={focusMode}
       onTitleSubmit={() => focusAtEnd(editorRef.current)}
-      warning={warning}
+      warning={warning ?? shortcutWarning}
+      warningAction={
+        warning === null && shortcutWarning
+          ? { label: "Configurações", onClick: openSettings }
+          : undefined
+      }
       onDismissWarning={() => {
-        setWarning(null);
+        if (warning === null) setShortcutWarning(null);
+        else setWarning(null);
         focusNote();
       }}
       pinned={pinned}

@@ -17,6 +17,7 @@ import {
   openNoteWindow,
   saveNote,
   setMoveMode,
+  setSetting,
   setWindowPinned,
   setWindowSize,
   type WindowShownPayload,
@@ -38,6 +39,7 @@ vi.mock("./lib/api", () => ({
   saveNote: vi.fn(),
   searchNotes: vi.fn(),
   setMoveMode: vi.fn(),
+  setSetting: vi.fn(),
   setWindowPinned: vi.fn(),
   setWindowSize: vi.fn(),
 }));
@@ -84,6 +86,8 @@ beforeEach(() => {
     theme: "system",
     shortcut: "Ctrl+Alt+K",
     hideOnBlur: true,
+    editorFont: "inter",
+    focusMode: false,
   });
   vi.mocked(getShortcutStatus).mockResolvedValue({ shortcut: "Ctrl+Alt+K", registered: true });
   vi.mocked(hideWindow).mockResolvedValue(undefined);
@@ -246,6 +250,8 @@ describe("App", () => {
       theme: "dark",
       shortcut: "Ctrl+Alt+K",
       hideOnBlur: true,
+      editorFont: "inter",
+      focusMode: false,
     });
     await renderApp();
     expect(document.documentElement.dataset.theme).toBe("dark");
@@ -258,6 +264,8 @@ describe("App", () => {
       theme: "light",
       shortcut: "Ctrl+Alt+K",
       hideOnBlur: true,
+      editorFont: "inter",
+      focusMode: false,
     });
     await act(async () => {
       window.dispatchEvent(new Event("focus"));
@@ -382,5 +390,50 @@ describe("App", () => {
       fireEvent.click(screen.getByRole("button", { name: "Copiar texto (Ctrl+Shift+C)" }));
     });
     expect(screen.getByRole("status").textContent).toContain("Não foi possível copiar");
+  });
+
+  it("abre as configurações e volta para a nota", async () => {
+    await renderApp();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Configurações (Ctrl+,)" }));
+    });
+    expect(screen.getByRole("region", { name: "Configurações" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Voltar (Esc)" }));
+    expect(screen.getByRole("region", { name: "Nota" })).toBeTruthy();
+  });
+
+  it("aviso do atalho leva às configurações", async () => {
+    vi.mocked(getShortcutStatus).mockResolvedValue({ shortcut: "Ctrl+Alt+K", registered: false });
+    await renderApp();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Configurações" }));
+    });
+    expect(screen.getByRole("region", { name: "Configurações" })).toBeTruthy();
+  });
+
+  it("aplica a fonte do editor ao carregar e ao mudar", async () => {
+    vi.mocked(getSettings).mockResolvedValue({
+      theme: "system",
+      shortcut: "Ctrl+Alt+K",
+      hideOnBlur: true,
+      editorFont: "serif",
+      focusMode: false,
+    });
+    const font = () => document.documentElement.style.getPropertyValue("--font-editor");
+    await renderApp();
+    expect(font()).toContain("Georgia");
+    vi.mocked(setSetting).mockResolvedValue({
+      theme: "system",
+      shortcut: "Ctrl+Alt+K",
+      hideOnBlur: true,
+      editorFont: "mono",
+      focusMode: false,
+    });
+    await act(async () => {
+      fireEvent.keyDown(editor(), { key: ",", ctrlKey: true });
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Fonte do editor" }));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Mono" })));
+    expect(font()).toContain("Consolas");
   });
 });

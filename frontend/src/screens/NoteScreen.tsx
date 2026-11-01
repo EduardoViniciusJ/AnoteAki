@@ -8,6 +8,7 @@ import { TitleField } from "../components/TitleField";
 import { Toast } from "../components/Toast";
 import { WordCount } from "../components/WordCount";
 import type { WindowSize } from "../lib/api";
+import { useFocusMode } from "../lib/useFocusMode";
 import type { Look, SaveStatus as Status } from "../lib/useNoteDraft";
 import "./NoteScreen.css";
 
@@ -34,10 +35,16 @@ export interface NoteScreenProps {
   onCopyMarkdown: () => void;
   /** History button, `Ctrl+H` or `Ctrl+F`. */
   onOpenHistory: () => void;
+  /** Gear button or `Ctrl+,`. */
+  onOpenSettings: () => void;
+  /** Hide the toolbar and footer while typing in the editor. */
+  focusMode?: boolean;
   /** Enter in the title: go to the text. */
   onTitleSubmit: () => void;
   warning: string | null;
   onDismissWarning: () => void;
+  /** Button in the warning, e.g. "Configurações" when the shortcut failed. */
+  warningAction?: { label: string; onClick: () => void };
   /** Short confirmation, e.g. "Copiado". */
   notice?: string | null;
   onDismissNotice?: () => void;
@@ -71,9 +78,12 @@ export function NoteScreen({
   onCopy,
   onCopyMarkdown,
   onOpenHistory,
+  onOpenSettings,
+  focusMode = false,
   onTitleSubmit,
   warning,
   onDismissWarning,
+  warningAction,
   notice = null,
   onDismissNotice = () => {},
   pinned = true,
@@ -86,10 +96,14 @@ export function NoteScreen({
   editorRef,
 }: NoteScreenProps) {
   const empty = !heading.trim() && !body.trim();
+  const focus = useFocusMode(focusMode);
+  const fade = focus.hidden ? " is-faded" : "";
   return (
     <section
       className="note-screen screen-enter"
       aria-label="Nota"
+      onMouseMove={focus.onMouseMove}
+      onBlur={focus.reveal}
       onKeyDown={(event) => {
         if (event.defaultPrevented) return;
         const key = event.key.toLowerCase();
@@ -117,6 +131,9 @@ export function NoteScreen({
         } else if (ctrl && (key === "h" || key === "f")) {
           event.preventDefault();
           onOpenHistory();
+        } else if (ctrl && event.key === ",") {
+          event.preventDefault();
+          onOpenSettings();
         }
       }}
     >
@@ -125,7 +142,7 @@ export function NoteScreen({
           <span className="note-screen__move-hint">Arraste para mover · Esc ou Ctrl+M sai</span>
         </div>
       )}
-      <header className="note-screen__toolbar" data-tauri-drag-region="">
+      <header className={`note-screen__toolbar${fade}`} data-tauri-drag-region="">
         {readOnly && (
           <span className="note-screen__trash">
             Na lixeira
@@ -160,8 +177,7 @@ export function NoteScreen({
         />
         <IconButton icon="plus" label="Nova nota (Ctrl+N)" onClick={onNewNote} />
         <IconButton icon="history" label="Histórico (Ctrl+H)" onClick={onOpenHistory} />
-        {/* Disabled until the Settings screen (T52). */}
-        <IconButton icon="settings" label="Configurações (Ctrl+,) — em breve" disabled />
+        <IconButton icon="settings" label="Configurações (Ctrl+,)" onClick={onOpenSettings} />
         <IconButton icon="close" label="Fechar post-it (Ctrl+W)" onClick={onClose} />
       </header>
       <TitleField
@@ -174,17 +190,25 @@ export function NoteScreen({
       <NoteEditor
         ref={editorRef}
         value={body}
-        onChange={onBodyChange}
+        onChange={(text) => {
+          onBodyChange(text);
+          focus.onType();
+        }}
         placeholder="Escreva algo…"
         readOnly={readOnly}
         onOpenLink={onOpenLink}
       />
       {warning ? (
-        <Toast variant="error" message={warning} onDismiss={onDismissWarning} />
+        <Toast
+          variant="error"
+          message={warning}
+          onDismiss={onDismissWarning}
+          action={warningAction}
+        />
       ) : notice ? (
         <Toast message={notice} onDismiss={onDismissNotice} />
       ) : (
-        <footer className="note-screen__footer">
+        <footer className={`note-screen__footer${fade}`}>
           <WordCount text={body} />
           <SaveStatus status={status} />
         </footer>
