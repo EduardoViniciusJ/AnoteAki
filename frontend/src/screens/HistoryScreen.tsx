@@ -1,5 +1,6 @@
 import {
   type KeyboardEvent,
+  type MouseEvent,
   type ReactNode,
   useCallback,
   useEffect,
@@ -12,19 +13,32 @@ import { NoteListItem, type NoteListItemAction } from "../components/NoteListIte
 import { Toast } from "../components/Toast";
 import {
   deleteNote,
+  emptyTrash,
+  getNote,
   listNotes,
+  type Note,
   type NoteScope,
+  type NoteSort,
   type NoteSummary,
   purgeNote,
   restoreNote,
+  type StickerColor,
   searchNotes,
+  setNotePinned,
 } from "../lib/api";
+import { copyText } from "../lib/clipboard";
 import { formatTime, formatWhen, groupByDay } from "../lib/dates";
 import "./HistoryScreen.css";
 
 export const PAGE_SIZE = 50;
 export const SEARCH_DELAY_MS = 200;
 export const UNDO_TIMEOUT_MS = 5000;
+/** Short confirmations ("Copiado") leave sooner than the undo toast. */
+export const INFO_TIMEOUT_MS = 2000;
+/** Hover or focus time before the preview opens. */
+export const PREVIEW_DELAY_MS = 400;
+/** How much of the body the preview shows. */
+export const PREVIEW_CHARS = 600;
 /** `query` limit in the contract (PRD §12). */
 const QUERY_MAX = 200;
 
@@ -34,6 +48,41 @@ type Notice =
   | { kind: "undo"; note: NoteSummary }
   | { kind: "info"; message: string }
   | { kind: "error"; message: string };
+
+/** Which destructive action waits in the ConfirmDialog. */
+type Confirm =
+  | { kind: "purge"; note: NoteSummary }
+  | { kind: "bulk-purge"; ids: number[] }
+  | { kind: "empty" };
+
+interface Preview {
+  noteId: number;
+  title: string;
+  excerpt: string;
+}
+
+const COLOR_NAMES: Record<StickerColor, string> = {
+  yellow: "amarelo",
+  pink: "rosa",
+  blue: "azul",
+  green: "verde",
+  lilac: "lilás",
+  paper: "papel",
+};
+
+const SORT_LABELS: Record<NoteSort, string> = {
+  updated: "Editadas",
+  created: "Criadas",
+  title: "Título (A–Z)",
+};
+
+/** Clipboard text: typed title, a blank line, then the body (same shape as the Note screen). */
+function fullNoteText(note: Note): string {
+  const title = note.heading.trim();
+  const body = note.body.trim();
+  if (!title) return body;
+  return body ? `${title}\n\n${body}` : title;
+}
 
 export interface HistoryScreenProps {
   /** `Esc` (with an empty search) or the back button. */
@@ -53,7 +102,11 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
   const [hasMore, setHasMore] = useState(false);
   const [selected, setSelected] = useState(0);
   const [notice, setNotice] = useState<Notice | null>(null);
-  const [confirmPurge, setConfirmPurge] = useState<NoteSummary | null>(null);
+  const [confirm, setConfirm] = useState<Confirm | null>(null);
+  const [colorFilter, setColorFilter] = useState<StickerColor | null>(null);
+  const [sort, setSort] = useState<NoteSort>("updated");
+  const [checked, setChecked] = useState<ReadonlySet<number>>(new Set());
+  const [preview, setPreview] = useState<Preview | null>(null);
 
   const searchRef = useRef<HTMLInputElement>(null);
   const itemRefs = useRef(new Map<number, HTMLButtonElement>());
@@ -61,6 +114,11 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
   const loadingMoreRef = useRef(false);
   /** After removing an item, focus moves to its neighbor when the list re-renders. */
   const refocusRef = useRef(false);
+  /** Start of a Shift+click range. */
+  const anchorRef = useRef<number | null>(null);
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Full notes already fetched for the preview or for copying. */
+  const noteCacheRef = useRef(new Map<number, Note>());
 
   // Search only exists on the Notes tab (`search_notes` only looks at active notes).
   const term = scope === "active" ? query.trim() : "";
@@ -73,6 +131,39 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
   // On the Trash tab the old term does not apply, not even until the debounce clears it.
   const searchTerm = scope === "active" ? debouncedTerm : "";
 
+  const cancelPreview = useCallback(() => {
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    previewTimerRef.current = null;
+    setPreview(null);
+  }, []);
+
+  /** Full note, from the session cache or the backend. */
+  const fetchNote = async (id: number): Promise<Note> => {
+    const cached = noteCacheRef.current.get(id);
+    if (cached) return cached;
+    const note = await getNote(id);
+    noteCacheRef.current.set(id, note);
+    return note;
+  };
+
+  const schedulePreview = (note: NoteSummary) => {
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    previewTimerRef.current = setTimeout(() => {
+      previewTimerRef.current = null;
+      fetchNote(note.id)
+        .then((full) => {
+          setPreview({
+            noteId: note.id,
+            title: note.title || "Sem título",
+            excerpt: [...full.body].slice(0, PREVIEW_CHARS).join(""),
+          });
+        })
+        .catch(() => {
+          // Without the note there is nothing to preview.
+        });
+    }, PREVIEW_DELAY_MS);
+  };
+
   const loadPage = useCallback(
     async (offset: number) => {
       const request = ++requestRef.current;
@@ -80,19 +171,31 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
       try {
         const page = searchTerm
           ? await searchNotes({ query: searchTerm, limit: PAGE_SIZE })
-          : await listNotes({ scope, limit: PAGE_SIZE, offset });
+          : await listNotes({
+              scope,
+              color: scope === "active" ? (colorFilter ?? undefined) : undefined,
+              sort,
+              limit: PAGE_SIZE,
+              offset,
+            });
         // An old response (previous search, other tab) does not overwrite the current one.
         if (request !== requestRef.current) return;
+        // The notes may have changed: a stale preview or copy would show old text.
+        noteCacheRef.current.clear();
         setItems((prev) => (offset === 0 ? page : [...prev, ...page]));
         // `search_notes` does not paginate: it returns everything up to the limit, by relevance.
         setHasMore(!searchTerm && page.length === PAGE_SIZE);
-        if (offset === 0) setSelected(0);
+        if (offset === 0) {
+          setSelected(0);
+          setChecked(new Set());
+          anchorRef.current = null;
+        }
         setPhase("ready");
       } catch {
         if (request === requestRef.current) setPhase("error");
       }
     },
-    [scope, searchTerm],
+    [scope, searchTerm, colorFilter, sort],
   );
 
   useEffect(() => {
@@ -114,9 +217,25 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
     searchRef.current?.focus();
   }, []);
 
+  // A preview timer must not fire after the screen closes.
+  useEffect(() => {
+    return () => {
+      if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    };
+  }, []);
+
+  // Deleting or restoring the hovered note unmounts its row without a
+  // mouseleave/blur, so the preview would stay on screen orphaned.
+  useEffect(() => {
+    if (preview && !items.some((note) => note.id === preview.noteId)) {
+      setPreview(null);
+    }
+  }, [items, preview]);
+
   useEffect(() => {
     if (notice?.kind !== "undo" && notice?.kind !== "info") return;
-    const timer = setTimeout(() => setNotice(null), UNDO_TIMEOUT_MS);
+    const timeout = notice.kind === "undo" ? UNDO_TIMEOUT_MS : INFO_TIMEOUT_MS;
+    const timer = setTimeout(() => setNotice(null), timeout);
     return () => clearTimeout(timer);
   }, [notice]);
 
@@ -178,7 +297,7 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
   };
 
   const purge = async (note: NoteSummary) => {
-    setConfirmPurge(null);
+    setConfirm(null);
     removeFromList(note.id);
     try {
       await purgeNote(note.id);
@@ -190,14 +309,133 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
 
   const askPurge = (note: NoteSummary) => {
     setNotice(null);
-    setConfirmPurge(note);
+    setConfirm({ kind: "purge", note });
+  };
+
+  const togglePin = async (note: NoteSummary) => {
+    try {
+      await setNotePinned(note.id, !note.pinned);
+      await loadPage(0);
+    } catch {
+      setNotice({ kind: "error", message: "Não foi possível fixar a nota." });
+    }
+  };
+
+  const copyNote = async (id: number) => {
+    try {
+      const note = await fetchNote(id);
+      await copyText(fullNoteText(note));
+      setNotice({ kind: "info", message: "Copiado" });
+    } catch {
+      setNotice({ kind: "error", message: "Não foi possível copiar." });
+    }
+  };
+
+  // --- multi-select
+
+  const clearChecked = () => {
+    setChecked(new Set());
+    anchorRef.current = null;
+  };
+
+  const toggleChecked = (id: number, index: number) => {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    anchorRef.current = index;
+  };
+
+  const checkRange = (index: number) => {
+    const anchor = anchorRef.current ?? selected;
+    const [from, to] = anchor < index ? [anchor, index] : [index, anchor];
+    setChecked(new Set(items.slice(from, to + 1).map((note) => note.id)));
+  };
+
+  const onItemClick = (event: MouseEvent, note: NoteSummary, index: number) => {
+    if (event.ctrlKey) {
+      toggleChecked(note.id, index);
+    } else if (event.shiftKey) {
+      checkRange(index);
+    } else {
+      clearChecked();
+      onOpenNote(note.id);
+    }
+  };
+
+  const bulkTrash = async (ids: number[]) => {
+    clearChecked();
+    try {
+      for (const id of ids) {
+        await deleteNote(id);
+        onNoteTrashed(id);
+      }
+      setNotice({
+        kind: "info",
+        message:
+          ids.length === 1
+            ? "Nota movida para a lixeira."
+            : `${ids.length} notas movidas para a lixeira.`,
+      });
+    } catch {
+      setNotice({ kind: "error", message: "Não foi possível excluir as notas." });
+    }
+    void loadPage(0);
+  };
+
+  const bulkRestore = async (ids: number[]) => {
+    clearChecked();
+    try {
+      for (const id of ids) await restoreNote(id);
+      setNotice({
+        kind: "info",
+        message: ids.length === 1 ? "Nota restaurada." : `${ids.length} notas restauradas.`,
+      });
+    } catch {
+      setNotice({ kind: "error", message: "Não foi possível restaurar as notas." });
+    }
+    void loadPage(0);
+  };
+
+  const bulkPurge = async (ids: number[]) => {
+    setConfirm(null);
+    clearChecked();
+    try {
+      for (const id of ids) await purgeNote(id);
+    } catch {
+      setNotice({ kind: "error", message: "Não foi possível excluir as notas." });
+    }
+    void loadPage(0);
+  };
+
+  const doEmptyTrash = async () => {
+    setConfirm(null);
+    try {
+      await emptyTrash();
+      setNotice({ kind: "info", message: "Lixeira esvaziada." });
+    } catch {
+      setNotice({ kind: "error", message: "Não foi possível esvaziar a lixeira." });
+    }
+    void loadPage(0);
+    searchRef.current?.focus();
   };
 
   const actionsFor = (note: NoteSummary): NoteListItemAction[] =>
     scope === "active"
-      ? [{ icon: "trash", label: "Excluir (Delete)", onClick: () => void trash(note) }]
+      ? [
+          {
+            icon: "pin",
+            label: note.pinned ? "Desafixar (P)" : "Fixar (P)",
+            onClick: () => void togglePin(note),
+          },
+          { icon: "copy", label: "Copiar (C)", onClick: () => void copyNote(note.id) },
+          { icon: "trash", label: "Excluir (Delete)", onClick: () => void trash(note) },
+        ]
       : [
           { icon: "restore", label: "Restaurar", onClick: () => void restore(note) },
+          { icon: "copy", label: "Copiar (C)", onClick: () => void copyNote(note.id) },
           {
             icon: "trash",
             label: "Excluir para sempre (Delete)",
@@ -208,6 +446,7 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
 
   const onListKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const index = selected;
+    const plain = !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey;
     switch (event.key) {
       case "ArrowDown":
         event.preventDefault();
@@ -226,12 +465,41 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
         event.preventDefault();
         focusItem(items.length - 1);
         break;
-      case "Delete": {
+      case " ": {
         const note = items[index];
         if (!note) return;
         event.preventDefault();
+        toggleChecked(note.id, index);
+        break;
+      }
+      case "Delete": {
+        event.preventDefault();
+        if (checked.size > 0) {
+          const ids = [...checked];
+          if (scope === "active") void bulkTrash(ids);
+          else setConfirm({ kind: "bulk-purge", ids });
+          return;
+        }
+        const note = items[index];
+        if (!note) return;
         if (scope === "active") void trash(note);
         else askPurge(note);
+        break;
+      }
+      case "p":
+      case "P": {
+        const note = items[index];
+        if (!note || !plain || scope !== "active") return;
+        event.preventDefault();
+        void togglePin(note);
+        break;
+      }
+      case "c":
+      case "C": {
+        const note = items[index];
+        if (!note || !plain) return;
+        event.preventDefault();
+        void copyNote(note.id);
         break;
       }
     }
@@ -242,11 +510,14 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
     setScope(next);
     setItems([]);
     setNotice(null);
-    setConfirmPurge(null);
+    setConfirm(null);
+    clearChecked();
+    cancelPreview();
   };
 
   const now = new Date();
-  const grouped = !searchTerm;
+  // Day groups only make sense ordered by edit date; summaries carry no createdAt.
+  const grouped = !searchTerm && sort === "updated";
   const renderItem = (note: NoteSummary) => {
     const index = items.indexOf(note);
     return (
@@ -259,12 +530,25 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
         note={note}
         when={grouped ? formatTime(note.updatedAt) : formatWhen(note.updatedAt, now)}
         selected={index === selected}
-        onFocus={() => setSelected(index)}
-        onOpen={() => onOpenNote(note.id)}
+        checked={checked.has(note.id)}
+        onFocus={() => {
+          setSelected(index);
+          schedulePreview(note);
+        }}
+        onBlur={cancelPreview}
+        onHoverChange={(hovering) => {
+          if (hovering) schedulePreview(note);
+          else cancelPreview();
+        }}
+        onOpen={(event) => onItemClick(event, note, index)}
         actions={actionsFor(note)}
       />
     );
   };
+
+  // In the active list the pinned notes come first (the backend sorts them first).
+  const pinnedItems = scope === "active" && !searchTerm ? items.filter((n) => n.pinned) : [];
+  const regularItems = pinnedItems.length > 0 ? items.filter((n) => !n.pinned) : items;
 
   let body: ReactNode;
   if (phase === "error") {
@@ -280,18 +564,40 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
     let message = "Nenhuma nota ainda.";
     if (phase === "loading") message = "Carregando…";
     else if (searchTerm) message = "Nenhuma nota encontrada.";
+    else if (colorFilter) message = "Nenhuma nota com essa cor.";
     else if (scope === "trash") message = "A lixeira está vazia.";
     body = <p className="history-screen__empty">{message}</p>;
-  } else if (grouped) {
-    body = groupByDay(items, now).map((group) => (
-      <section key={group.key} className="history-screen__group" aria-label={group.label}>
-        <h2 className="history-screen__day">{group.label}</h2>
-        <ul className="history-screen__items">{group.items.map(renderItem)}</ul>
-      </section>
-    ));
   } else {
-    body = <ul className="history-screen__items">{items.map(renderItem)}</ul>;
+    const rest = grouped ? (
+      groupByDay(regularItems, now).map((group) => (
+        <section key={group.key} className="history-screen__group" aria-label={group.label}>
+          <h2 className="history-screen__day">{group.label}</h2>
+          <ul className="history-screen__items">{group.items.map(renderItem)}</ul>
+        </section>
+      ))
+    ) : (
+      <ul className="history-screen__items">{regularItems.map(renderItem)}</ul>
+    );
+    body = (
+      <>
+        {pinnedItems.length > 0 && (
+          <section className="history-screen__group" aria-label="Fixadas">
+            <h2 className="history-screen__day">Fixadas</h2>
+            <ul className="history-screen__items">{pinnedItems.map(renderItem)}</ul>
+          </section>
+        )}
+        {rest}
+      </>
+    );
   }
+
+  const checkedIds = [...checked];
+  const confirmMessage =
+    confirm?.kind === "purge"
+      ? `Excluir "${confirm.note.title || "Sem título"}" para sempre? Não dá para desfazer.`
+      : confirm?.kind === "bulk-purge"
+        ? `Excluir ${confirm.ids.length} nota(s) para sempre? Não dá para desfazer.`
+        : `Esvaziar a lixeira? ${items.length} nota(s) serão excluídas para sempre.`;
 
   return (
     <section
@@ -301,7 +607,10 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
         if (event.defaultPrevented) return;
         if (event.key === "Escape") {
           event.preventDefault();
-          onBack();
+          // Esc goes one level at a time: preview, selection, then back.
+          if (preview) cancelPreview();
+          else if (checked.size > 0) clearChecked();
+          else onBack();
         } else if (event.ctrlKey && !event.altKey && event.key.toLowerCase() === "f") {
           event.preventDefault();
           switchScope("active");
@@ -348,6 +657,50 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
           </button>
         ))}
       </div>
+      <div className="history-screen__filters">
+        {scope === "active" && (
+          <fieldset className="history-screen__colors" aria-label="Filtrar por cor">
+            {(Object.keys(COLOR_NAMES) as StickerColor[]).map((color) => (
+              <button
+                key={color}
+                type="button"
+                className="history-screen__color"
+                style={{ background: `var(--sticker-${color})` }}
+                aria-label={`Filtrar por ${COLOR_NAMES[color]}`}
+                title={`Filtrar por ${COLOR_NAMES[color]}`}
+                aria-pressed={colorFilter === color}
+                disabled={Boolean(searchTerm)}
+                onClick={() => setColorFilter((prev) => (prev === color ? null : color))}
+              />
+            ))}
+          </fieldset>
+        )}
+        <select
+          className="history-screen__sort"
+          aria-label="Ordenar"
+          value={sort}
+          disabled={Boolean(searchTerm)}
+          onChange={(event) => setSort(event.target.value as NoteSort)}
+        >
+          {(Object.keys(SORT_LABELS) as NoteSort[]).map((value) => (
+            <option key={value} value={value}>
+              {SORT_LABELS[value]}
+            </option>
+          ))}
+        </select>
+        {scope === "trash" && items.length > 0 && (
+          <button
+            type="button"
+            className="history-screen__empty-trash"
+            onClick={() => {
+              setNotice(null);
+              setConfirm({ kind: "empty" });
+            }}
+          >
+            Esvaziar lixeira
+          </button>
+        )}
+      </div>
       <div
         className="history-screen__list"
         role="tabpanel"
@@ -355,32 +708,81 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
         aria-busy={phase === "loading"}
         onKeyDown={onListKeyDown}
         onScroll={(event) => {
+          cancelPreview();
           const el = event.currentTarget;
           if (el.scrollTop + el.clientHeight >= el.scrollHeight - 48) void loadMore();
         }}
       >
         {body}
       </div>
-      {confirmPurge && (
+      {preview && !confirm && checked.size === 0 && (
+        <div className="history-screen__preview" role="note" aria-label="Prévia">
+          <span className="history-screen__preview-title">{preview.title}</span>
+          {preview.excerpt && (
+            <span className="history-screen__preview-body">{preview.excerpt}</span>
+          )}
+        </div>
+      )}
+      {!confirm && checked.size > 0 && (
+        <div className="history-screen__selection" role="toolbar" aria-label="Notas selecionadas">
+          <span className="history-screen__selection-count">
+            {checked.size === 1 ? "1 selecionada" : `${checked.size} selecionadas`}
+          </span>
+          {scope === "active" ? (
+            <button
+              type="button"
+              className="history-screen__selection-button"
+              onClick={() => void bulkTrash(checkedIds)}
+            >
+              Excluir ({checked.size})
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="history-screen__selection-button"
+                onClick={() => void bulkRestore(checkedIds)}
+              >
+                Restaurar ({checked.size})
+              </button>
+              <button
+                type="button"
+                className="history-screen__selection-button history-screen__selection-button--danger"
+                onClick={() => setConfirm({ kind: "bulk-purge", ids: checkedIds })}
+              >
+                Excluir para sempre ({checked.size})
+              </button>
+            </>
+          )}
+          <button type="button" className="history-screen__selection-button" onClick={clearChecked}>
+            Limpar
+          </button>
+        </div>
+      )}
+      {confirm && (
         <ConfirmDialog
-          message={`Excluir "${confirmPurge.title || "Sem título"}" para sempre? Não dá para desfazer.`}
-          confirmLabel="Excluir"
-          onConfirm={() => void purge(confirmPurge)}
+          message={confirmMessage}
+          confirmLabel={confirm.kind === "empty" ? "Esvaziar" : "Excluir"}
+          onConfirm={() => {
+            if (confirm.kind === "purge") void purge(confirm.note);
+            else if (confirm.kind === "bulk-purge") void bulkPurge(confirm.ids);
+            else void doEmptyTrash();
+          }}
           onCancel={() => {
-            setConfirmPurge(null);
+            setConfirm(null);
             const id = items[selected]?.id;
             (id === undefined ? searchRef.current : itemRefs.current.get(id))?.focus();
           }}
         />
       )}
-      {!confirmPurge && notice?.kind === "undo" && (
+      {!confirm && notice?.kind === "undo" && (
         <Toast
           message="Nota movida para a lixeira."
           action={{ label: "Desfazer", onClick: () => void undoTrash(notice.note) }}
           onDismiss={() => setNotice(null)}
         />
       )}
-      {!confirmPurge && notice && notice.kind !== "undo" && (
+      {!confirm && notice && notice.kind !== "undo" && (
         <Toast
           variant={notice.kind === "error" ? "error" : "default"}
           message={notice.message}

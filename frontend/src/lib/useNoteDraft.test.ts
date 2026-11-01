@@ -16,6 +16,7 @@ function note(id: number, body: string, deletedAt: string | null = null): Note {
     body,
     color: "pink",
     opacity: 85,
+    pinned: false,
     createdAt: now,
     updatedAt: now,
     deletedAt,

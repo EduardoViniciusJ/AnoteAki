@@ -53,11 +53,14 @@ pub async fn save_note(
 pub async fn list_notes(
     db: State<'_, Db>,
     scope: String,
+    color: Option<String>,
+    sort: Option<String>,
     limit: Option<i64>,
     offset: Option<i64>,
 ) -> Result<Vec<NoteSummary>, AppError> {
     let scope = Scope::parse(&scope)?;
-    db.with(|conn| notes::list(conn, scope, limit, offset))
+    let sort = notes::Sort::parse(sort.as_deref())?;
+    db.with(|conn| notes::list(conn, scope, color.as_deref(), sort, limit, offset))
 }
 
 #[tauri::command]
@@ -94,6 +97,18 @@ pub async fn delete_note(
         Some(other) => window::close(&db, &windows, &other),
         None => windows.remove(&label),
     }
+}
+
+/// Pins a note on top of the history (or unpins it).
+#[tauri::command]
+pub async fn set_note_pinned(db: State<'_, Db>, id: i64, pinned: bool) -> Result<Note, AppError> {
+    db.with(|conn| notes::set_pinned(conn, id, pinned))
+}
+
+/// Permanently removes every note in the trash.
+#[tauri::command]
+pub async fn empty_trash(db: State<'_, Db>) -> Result<(), AppError> {
+    db.with(|conn| notes::empty_trash(conn))
 }
 
 #[tauri::command]

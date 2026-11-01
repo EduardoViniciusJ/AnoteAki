@@ -14,6 +14,8 @@ export interface Note {
   body: string;
   color: StickerColor | null;
   opacity: StickerOpacity;
+  /** Pinned notes come first in the history. */
+  pinned: boolean;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -24,6 +26,7 @@ export interface NoteSummary {
   title: string;
   preview: string;
   color: StickerColor | null;
+  pinned: boolean;
   updatedAt: string;
   deletedAt: string | null;
 }
@@ -49,6 +52,8 @@ export interface AppError {
 }
 
 export type NoteScope = "active" | "trash";
+/** History order. Pinned notes still come first in `active`. */
+export type NoteSort = "updated" | "created" | "title";
 export type ShowReason = "shortcut" | "tray" | "second-instance";
 
 export interface WindowShownPayload {
@@ -104,13 +109,23 @@ export const saveNote = (input: {
   color?: StickerColor | null;
   opacity?: StickerOpacity;
 }) => call<Note>("save_note", input);
-export const listNotes = (input: { scope: NoteScope; limit?: number; offset?: number }) =>
-  call<NoteSummary[]>("list_notes", input);
+export const listNotes = (input: {
+  scope: NoteScope;
+  /** Only filters `active`; `yellow` also matches notes without a color. */
+  color?: StickerColor;
+  sort?: NoteSort;
+  limit?: number;
+  offset?: number;
+}) => call<NoteSummary[]>("list_notes", input);
 export const searchNotes = (input: { query: string; limit?: number }) =>
   call<NoteSummary[]>("search_notes", input);
 export const deleteNote = (id: number) => call<void>("delete_note", { id });
 export const restoreNote = (id: number) => call<Note>("restore_note", { id });
 export const purgeNote = (id: number) => call<void>("purge_note", { id });
+export const setNotePinned = (id: number, pinned: boolean) =>
+  call<Note>("set_note_pinned", { id, pinned });
+/** Permanently removes every note in the trash. */
+export const emptyTrash = () => call<void>("empty_trash");
 
 // Settings and window
 export const getSettings = () => call<Settings>("get_settings");

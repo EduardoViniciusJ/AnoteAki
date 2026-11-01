@@ -10,6 +10,7 @@ export type IconName =
   | "restore"
   | "palette"
   | "copy"
+  | "pin"
   | "markdown";
 
 // 16×16 stroke icons drawn with paths.
@@ -29,6 +30,7 @@ const PATHS: Record<IconName, string[]> = {
     "M5 7.5h.01M7 5h.01M10 5.5h.01",
   ],
   copy: ["M5.5 5.5h7v8h-7z", "M3.5 10.5v-8h7"],
+  pin: ["M6 2h4", "M6.5 2v4L4.5 8.5h7L9.5 6V2", "M8 8.5V14"],
   // The Markdown "M" with the download arrow.
   markdown: ["M2 11V5.5l2.5 3l2.5-3V11", "M11 5v6", "M8.5 8.5l2.5 2.5l2.5-2.5"],
 };

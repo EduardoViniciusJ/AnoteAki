@@ -33,6 +33,7 @@ pub struct Note {
     pub body: String,
     pub color: Option<String>,
     pub opacity: i64,
+    pub pinned: bool,
     pub created_at: String,
     pub updated_at: String,
     pub deleted_at: Option<String>,
@@ -45,6 +46,7 @@ pub struct NoteSummary {
     pub title: String,
     pub preview: String,
     pub color: Option<String>,
+    pub pinned: bool,
     pub updated_at: String,
     pub deleted_at: Option<String>,
 }
@@ -65,8 +67,38 @@ impl Scope {
     }
 }
 
+/// `sort` of `list_notes`. Only how the list is ordered; pinned notes
+/// still come first in the active scope.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Sort {
+    Updated,
+    Created,
+    Title,
+}
+
+impl Sort {
+    pub fn parse(value: Option<&str>) -> Result<Self, AppError> {
+        match value {
+            None | Some("updated") => Ok(Self::Updated),
+            Some("created") => Ok(Self::Created),
+            Some("title") => Ok(Self::Title),
+            Some(_) => Err(AppError::InvalidInput("Ordenação inválida.")),
+        }
+    }
+
+    /// SQL sort keys. Title sort is case-insensitive, untitled notes last
+    /// (only possible in the trash; `active` already excludes them).
+    fn order_sql(self) -> &'static str {
+        match self {
+            Self::Updated => "updated_at DESC, id DESC",
+            Self::Created => "created_at DESC, id DESC",
+            Self::Title => "title = '', title COLLATE NOCASE ASC, id ASC",
+        }
+    }
+}
+
 const NOTE_COLUMNS: &str =
-    "id, title, heading, body, color, opacity, created_at, updated_at, deleted_at";
+    "id, title, heading, body, color, opacity, pinned, created_at, updated_at, deleted_at";
 
 fn note_from_row(row: &Row<'_>) -> rusqlite::Result<Note> {
     Ok(Note {
@@ -76,9 +108,10 @@ fn note_from_row(row: &Row<'_>) -> rusqlite::Result<Note> {
         body: row.get(3)?,
         color: row.get(4)?,
         opacity: row.get(5)?,
-        created_at: row.get(6)?,
-        updated_at: row.get(7)?,
-        deleted_at: row.get(8)?,
+        pinned: row.get(6)?,
+        created_at: row.get(7)?,
+        updated_at: row.get(8)?,
+        deleted_at: row.get(9)?,
     })
 }
 
@@ -96,20 +129,22 @@ pub struct SaveInput<'a> {
 fn summary_columns(table: &str) -> String {
     format!(
         "{table}.id, {table}.title, substr({table}.body, 1, {PREVIEW_SOURCE_CHARS}), \
-         {table}.color, {table}.updated_at, {table}.deleted_at, {table}.heading <> ''"
+         {table}.color, {table}.pinned, {table}.updated_at, {table}.deleted_at, \
+         {table}.heading <> ''"
     )
 }
 
 fn summary_from_row(row: &Row<'_>) -> rusqlite::Result<NoteSummary> {
     let body: String = row.get(2)?;
-    let has_heading: bool = row.get(6)?;
+    let has_heading: bool = row.get(7)?;
     Ok(NoteSummary {
         id: row.get(0)?,
         title: row.get(1)?,
         preview: derive_preview(&body, has_heading),
         color: row.get(3)?,
-        updated_at: row.get(4)?,
-        deleted_at: row.get(5)?,
+        pinned: row.get(4)?,
+        updated_at: row.get(5)?,
+        deleted_at: row.get(6)?,
     })
 }
 
@@ -287,29 +322,66 @@ pub fn save(conn: &Connection, input: SaveInput<'_>) -> Result<Note, AppError> {
     get(conn, id)
 }
 
-/// `active` skips empty notes (empty title = empty or whitespace-only body).
+/// `active` skips empty notes (empty title = empty or whitespace-only body)
+/// and puts pinned notes first. `color` only filters the active scope
+/// (ignored in the trash); `None` in the column counts as yellow (the default).
 pub fn list(
     conn: &Connection,
     scope: Scope,
+    color: Option<&str>,
+    sort: Sort,
     limit: Option<i64>,
     offset: Option<i64>,
 ) -> Result<Vec<NoteSummary>, AppError> {
+    validate_color(color)?;
     let limit = validate_limit(limit)?;
     let offset = offset.unwrap_or(0);
     if offset < 0 {
         return Err(AppError::InvalidInput("Offset inválido."));
     }
-    let filter = match scope {
-        Scope::Active => "deleted_at IS NULL AND title <> ''",
-        Scope::Trash => "deleted_at IS NOT NULL",
+    let (filter, order) = match scope {
+        Scope::Active => (
+            "deleted_at IS NULL AND title <> ''",
+            format!("pinned DESC, {}", sort.order_sql()),
+        ),
+        Scope::Trash => ("deleted_at IS NOT NULL", sort.order_sql().to_owned()),
     };
-    let mut stmt = conn.prepare(&format!(
-        "SELECT {} FROM notes WHERE {filter} \
-         ORDER BY updated_at DESC, id DESC LIMIT ?1 OFFSET ?2",
+    let by_color = match (scope, color) {
+        (Scope::Active, Some("yellow")) => " AND (color = ?3 OR color IS NULL)",
+        (Scope::Active, Some(_)) => " AND color = ?3",
+        _ => "",
+    };
+    let sql = format!(
+        "SELECT {} FROM notes WHERE {filter}{by_color} \
+         ORDER BY {order} LIMIT ?1 OFFSET ?2",
         summary_columns("notes")
-    ))?;
-    let rows = stmt.query_map(params![limit, offset], summary_from_row)?;
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = if by_color.is_empty() {
+        stmt.query_map(params![limit, offset], summary_from_row)?
+    } else {
+        stmt.query_map(params![limit, offset, color], summary_from_row)?
+    };
     Ok(rows.collect::<Result<_, _>>()?)
+}
+
+/// Pins or unpins an active note, without touching `updatedAt`.
+pub fn set_pinned(conn: &Connection, id: i64, pinned: bool) -> Result<Note, AppError> {
+    if get(conn, id)?.deleted_at.is_some() {
+        return Err(AppError::InvalidInput("Restaure a nota antes de fixá-la."));
+    }
+    conn.execute(
+        "UPDATE notes SET pinned = ?2 WHERE id = ?1",
+        params![id, pinned],
+    )?;
+    get(conn, id)
+}
+
+/// Permanently removes every note in the trash. A single DELETE: SQLite runs it
+/// in one implicit transaction, and the FTS triggers keep the index in sync.
+pub fn empty_trash(conn: &Connection) -> Result<(), AppError> {
+    conn.execute("DELETE FROM notes WHERE deleted_at IS NOT NULL", [])?;
+    Ok(())
 }
 
 /// FTS5 over title+body, active notes only, by relevance (`bm25`).
@@ -478,7 +550,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(cleared.title, "ovos");
-        let list = list(&conn, Scope::Active, None, None).unwrap();
+        let list = list(&conn, Scope::Active, None, Sort::Updated, None, None).unwrap();
         assert_eq!(list[0].preview, "");
     }
 
@@ -495,7 +567,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            ids(&list(&conn, Scope::Active, None, None).unwrap()),
+            ids(&list(&conn, Scope::Active, None, Sort::Updated, None, None).unwrap()),
             vec![note.id]
         );
         assert_eq!(ids(&search(&conn, "reuniao", None).unwrap()), vec![note.id]);
@@ -632,7 +704,7 @@ mod tests {
         set_updated(&conn, a.id, "2026-01-03T00:00:00.000Z");
         set_updated(&conn, b.id, "2026-01-04T00:00:00.000Z");
         set_updated(&conn, empty.id, "2026-01-05T00:00:00.000Z");
-        let list = list(&conn, Scope::Active, None, None).unwrap();
+        let list = list(&conn, Scope::Active, None, Sort::Updated, None, None).unwrap();
         assert_eq!(ids(&list), vec![b.id, a.id]);
     }
 
@@ -643,10 +715,10 @@ mod tests {
         let b = create(&conn, "b");
         delete(&conn, a.id).unwrap();
         assert_eq!(
-            ids(&list(&conn, Scope::Active, None, None).unwrap()),
+            ids(&list(&conn, Scope::Active, None, Sort::Updated, None, None).unwrap()),
             vec![b.id]
         );
-        let trash = list(&conn, Scope::Trash, None, None).unwrap();
+        let trash = list(&conn, Scope::Trash, None, Sort::Updated, None, None).unwrap();
         assert_eq!(ids(&trash), vec![a.id]);
         assert!(trash[0].deleted_at.is_some());
     }
@@ -658,9 +730,9 @@ mod tests {
             let note = create(&conn, &format!("n{i}"));
             set_updated(&conn, note.id, &format!("2026-01-0{}T00:00:00.000Z", i + 1));
         }
-        let first = list(&conn, Scope::Active, Some(2), Some(0)).unwrap();
-        let second = list(&conn, Scope::Active, Some(2), Some(2)).unwrap();
-        let last = list(&conn, Scope::Active, Some(2), Some(4)).unwrap();
+        let first = list(&conn, Scope::Active, None, Sort::Updated, Some(2), Some(0)).unwrap();
+        let second = list(&conn, Scope::Active, None, Sort::Updated, Some(2), Some(2)).unwrap();
+        let last = list(&conn, Scope::Active, None, Sort::Updated, Some(2), Some(4)).unwrap();
         assert_eq!(ids(&first), vec![5, 4]);
         assert_eq!(ids(&second), vec![3, 2]);
         assert_eq!(ids(&last), vec![1]);
@@ -670,10 +742,20 @@ mod tests {
     fn list_validates_limit_and_offset() {
         let conn = open_in_memory();
         for (limit, offset) in [(Some(0), None), (Some(201), None), (None, Some(-1))] {
-            let error = list(&conn, Scope::Active, limit, offset).unwrap_err();
+            let error = list(&conn, Scope::Active, None, Sort::Updated, limit, offset).unwrap_err();
             assert_eq!(error.code(), "INVALID_INPUT");
         }
-        assert!(list(&conn, Scope::Active, Some(200), Some(0)).is_ok());
+        assert!(
+            list(
+                &conn,
+                Scope::Active,
+                None,
+                Sort::Updated,
+                Some(200),
+                Some(0)
+            )
+            .is_ok()
+        );
         assert_eq!(Scope::parse("x").unwrap_err().code(), "INVALID_INPUT");
     }
 
@@ -681,7 +763,7 @@ mod tests {
     fn list_preview_comes_from_the_body() {
         let conn = open_in_memory();
         create(&conn, "Título\nprimeira   linha\nsegunda");
-        let list = list(&conn, Scope::Active, None, None).unwrap();
+        let list = list(&conn, Scope::Active, None, Sort::Updated, None, None).unwrap();
         assert_eq!(list[0].preview, "primeira linha segunda");
     }
 
@@ -835,7 +917,7 @@ mod tests {
         let restored = restore(&conn, note.id).unwrap();
         assert_eq!(restored.deleted_at, None);
         assert_eq!(
-            ids(&list(&conn, Scope::Active, None, None).unwrap()),
+            ids(&list(&conn, Scope::Active, None, Sort::Updated, None, None).unwrap()),
             vec![note.id]
         );
     }
@@ -865,9 +947,137 @@ mod tests {
         ] {
             assert!(json.get(key).is_some(), "missing {key}");
         }
-        let summary = &list(&conn, Scope::Active, None, None).unwrap()[0];
+        let summary = &list(&conn, Scope::Active, None, Sort::Updated, None, None).unwrap()[0];
         let json = serde_json::to_value(summary).unwrap();
         assert!(json.get("preview").is_some());
         assert!(json.get("updatedAt").is_some());
+        assert_eq!(json.get("pinned"), Some(&serde_json::Value::Bool(false)));
+    }
+
+    // --- pinned, color filter, sort and empty trash
+
+    #[test]
+    fn pinned_notes_come_first_in_the_active_scope() {
+        let conn = open_in_memory();
+        let a = create(&conn, "a");
+        let b = create(&conn, "b");
+        let c = create(&conn, "c");
+        set_updated(&conn, a.id, "2026-10-01T00:00:00.000Z");
+        set_updated(&conn, b.id, "2026-10-02T00:00:00.000Z");
+        set_updated(&conn, c.id, "2026-10-03T00:00:00.000Z");
+        let pinned = set_pinned(&conn, a.id, true).unwrap();
+        assert!(pinned.pinned);
+        // Pinning does not reorder the history by date.
+        assert_eq!(pinned.updated_at, "2026-10-01T00:00:00.000Z");
+        let list = list(&conn, Scope::Active, None, Sort::Updated, None, None).unwrap();
+        assert_eq!(ids(&list), vec![a.id, c.id, b.id]);
+        assert!(list[0].pinned);
+        set_pinned(&conn, a.id, false).unwrap();
+        assert_eq!(
+            ids(&super::list(&conn, Scope::Active, None, Sort::Updated, None, None).unwrap()),
+            vec![c.id, b.id, a.id]
+        );
+    }
+
+    #[test]
+    fn pinning_rejects_missing_and_trashed_notes() {
+        let conn = open_in_memory();
+        assert_eq!(
+            set_pinned(&conn, 999, true).unwrap_err().code(),
+            "NOT_FOUND"
+        );
+        let note = create(&conn, "a");
+        delete(&conn, note.id).unwrap();
+        let error = set_pinned(&conn, note.id, true).unwrap_err();
+        assert_eq!(error.code(), "INVALID_INPUT");
+    }
+
+    #[test]
+    fn color_filter_matches_the_color_and_yellow_includes_the_default() {
+        let conn = open_in_memory();
+        let yellow = save(&conn, input(None, "explicit yellow", Some("yellow"))).unwrap();
+        let default = create(&conn, "default color");
+        let blue = save(&conn, input(None, "blue", Some("blue"))).unwrap();
+        let list_blue = list(
+            &conn,
+            Scope::Active,
+            Some("blue"),
+            Sort::Updated,
+            None,
+            None,
+        )
+        .unwrap();
+        assert_eq!(ids(&list_blue), vec![blue.id]);
+        let list_yellow = list(
+            &conn,
+            Scope::Active,
+            Some("yellow"),
+            Sort::Updated,
+            None,
+            None,
+        )
+        .unwrap();
+        assert_eq!(ids(&list_yellow), vec![default.id, yellow.id]);
+        let error = list(
+            &conn,
+            Scope::Active,
+            Some("neon"),
+            Sort::Updated,
+            None,
+            None,
+        )
+        .unwrap_err();
+        assert_eq!(error.code(), "INVALID_INPUT");
+    }
+
+    #[test]
+    fn color_filter_is_ignored_in_the_trash() {
+        let conn = open_in_memory();
+        let note = save(&conn, input(None, "blue", Some("blue"))).unwrap();
+        delete(&conn, note.id).unwrap();
+        let trash = list(&conn, Scope::Trash, Some("pink"), Sort::Updated, None, None).unwrap();
+        assert_eq!(ids(&trash), vec![note.id]);
+    }
+
+    #[test]
+    fn sorts_by_creation_and_by_title() {
+        let conn = open_in_memory();
+        let banana = create(&conn, "banana");
+        let abacaxi = create(&conn, "Abacaxi");
+        set_updated(&conn, banana.id, "2026-10-09T00:00:00.000Z");
+        set_updated(&conn, abacaxi.id, "2026-10-01T00:00:00.000Z");
+        conn.execute(
+            "UPDATE notes SET created_at = '2026-01-01T00:00:00.000Z' WHERE id = ?1",
+            [abacaxi.id],
+        )
+        .unwrap();
+        let by_created = list(&conn, Scope::Active, None, Sort::Created, None, None).unwrap();
+        assert_eq!(ids(&by_created), vec![banana.id, abacaxi.id]);
+        // Case-insensitive A→Z, regardless of the dates.
+        let by_title = list(&conn, Scope::Active, None, Sort::Title, None, None).unwrap();
+        assert_eq!(ids(&by_title), vec![abacaxi.id, banana.id]);
+        assert_eq!(Sort::parse(None).unwrap(), Sort::Updated);
+        assert_eq!(
+            Sort::parse(Some("zigzag")).unwrap_err().code(),
+            "INVALID_INPUT"
+        );
+    }
+
+    #[test]
+    fn empty_trash_removes_only_trashed_notes_and_their_index() {
+        let conn = open_in_memory();
+        let keep = create(&conn, "fica");
+        let gone = create(&conn, "some indexada");
+        delete(&conn, gone.id).unwrap();
+        empty_trash(&conn).unwrap();
+        assert_eq!(get(&conn, gone.id).unwrap_err().code(), "NOT_FOUND");
+        assert_eq!(get(&conn, keep.id).unwrap().id, keep.id);
+        assert_eq!(fts_count(&conn, "indexada"), 0);
+        assert_eq!(fts_count(&conn, "fica"), 1);
+        assert!(
+            list(&conn, Scope::Trash, None, Sort::Updated, None, None)
+                .unwrap()
+                .is_empty()
+        );
     }
 }
