@@ -9,13 +9,13 @@
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
-  color: var(--ink-muted);
+  /* Full ink: the muted gray made the toolbar icons look washed out. */
+  color: var(--ink);
   cursor: pointer;
 }
 
 .icon-button:hover {
   background: var(--surface-2);
-  color: var(--ink);
 }
 
 .icon-button:focus-visible {
@@ -35,7 +35,6 @@
 
 .icon-button[aria-disabled="true"]:hover {
   background: transparent;
-  color: var(--ink-muted);
 }
 
 .icon-button__icon {

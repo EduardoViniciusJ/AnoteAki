@@ -3,10 +3,11 @@ import type { WindowSize } from "../lib/api";
 import { IconButton } from "./IconButton";
 import "./SizeMenu.css";
 
-export const SIZES: { value: WindowSize; label: string }[] = [
-  { value: "small", label: "Pequeno" },
-  { value: "medium", label: "Médio" },
-  { value: "large", label: "Grande" },
+/** `icon` is the side of the square drawn next to the label. */
+export const SIZES: { value: WindowSize; label: string; icon: number }[] = [
+  { value: "small", label: "Pequeno", icon: 6 },
+  { value: "medium", label: "Médio", icon: 9 },
+  { value: "large", label: "Grande", icon: 12 },
 ];
 
 export interface SizeMenuProps {
@@ -50,7 +51,7 @@ export function SizeMenu({ onChange }: SizeMenuProps) {
             }
           }}
         >
-          {SIZES.map(({ value, label }, index) => (
+          {SIZES.map(({ value, label, icon }, index) => (
             <button
               key={value}
               ref={index === 0 ? firstRef : undefined}
@@ -61,6 +62,9 @@ export function SizeMenu({ onChange }: SizeMenuProps) {
                 onChange(value);
               }}
             >
+              <svg className="size-menu__icon" viewBox="0 0 16 16" aria-hidden="true">
+                <rect x={(16 - icon) / 2} y={(16 - icon) / 2} width={icon} height={icon} rx="1.5" />
+              </svg>
               {label}
             </button>
           ))}

@@ -20,7 +20,10 @@
 }
 
 .size-menu__option {
-  padding: 2px var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px var(--space-3) 2px var(--space-2);
   border: 1px solid transparent;
   border-radius: var(--radius-control);
   background: transparent;
@@ -34,6 +37,15 @@
 
 .size-menu__option:hover {
   background: var(--surface-2);
+}
+
+.size-menu__icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
 }
 
 .size-menu__option:focus-visible {
