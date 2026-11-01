@@ -5,6 +5,7 @@ import { NoteEditor } from "../components/NoteEditor";
 import { SaveStatus } from "../components/SaveStatus";
 import { TitleField } from "../components/TitleField";
 import { Toast } from "../components/Toast";
+import { WordCount } from "../components/WordCount";
 import type { Look, SaveStatus as Status } from "../lib/useNoteDraft";
 import "./NoteScreen.css";
 
@@ -147,7 +148,10 @@ export function NoteScreen({
       ) : notice ? (
         <Toast message={notice} onDismiss={onDismissNotice} />
       ) : (
-        <SaveStatus status={status} />
+        <footer className="note-screen__footer">
+          <WordCount text={body} />
+          <SaveStatus status={status} />
+        </footer>
       )}
     </section>
   );

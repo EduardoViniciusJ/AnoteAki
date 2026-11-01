@@ -16,3 +16,20 @@
 .save-status--error {
   color: var(--danger);
 }
+
+/* A quick fade when "Salvo" appears. */
+.save-status--saved {
+  animation: save-status-in 150ms ease-out;
+}
+
+@keyframes save-status-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .save-status--saved {
+    animation: none;
+  }
+}
