@@ -25,12 +25,19 @@ export interface NoteScreenProps {
   onNewNote: () => void;
   /** "×" or `Ctrl+W`: close this sticky note. */
   onClose: () => void;
+  /** "Copiar texto" or `Ctrl+Shift+C`: the whole note to the clipboard. */
+  onCopy: () => void;
+  /** "Copiar como Markdown" or `Ctrl+Shift+M`: the title becomes a heading. */
+  onCopyMarkdown: () => void;
   /** History button, `Ctrl+H` or `Ctrl+F`. */
   onOpenHistory: () => void;
   /** Enter in the title: go to the text. */
   onTitleSubmit: () => void;
   warning: string | null;
   onDismissWarning: () => void;
+  /** Short confirmation, e.g. "Copiado". */
+  notice?: string | null;
+  onDismissNotice?: () => void;
   titleRef?: Ref<HTMLInputElement>;
   editorRef?: Ref<HTMLTextAreaElement>;
 }
@@ -49,13 +56,18 @@ export function NoteScreen({
   onEscape,
   onNewNote,
   onClose,
+  onCopy,
+  onCopyMarkdown,
   onOpenHistory,
   onTitleSubmit,
   warning,
   onDismissWarning,
+  notice = null,
+  onDismissNotice = () => {},
   titleRef,
   editorRef,
 }: NoteScreenProps) {
+  const empty = !heading.trim() && !body.trim();
   return (
     <section
       className="note-screen screen-enter"
@@ -68,6 +80,12 @@ export function NoteScreen({
         if (event.key === "Escape") {
           event.preventDefault();
           onEscape();
+        } else if (ctrl && event.shiftKey && key === "c") {
+          event.preventDefault();
+          if (!empty) onCopy();
+        } else if (ctrl && event.shiftKey && key === "m") {
+          event.preventDefault();
+          if (!empty) onCopyMarkdown();
         } else if (ctrl && key === "n") {
           event.preventDefault();
           onNewNote();
@@ -90,6 +108,20 @@ export function NoteScreen({
           </span>
         )}
         <ColorMenu look={look} onChange={onLookChange} disabled={readOnly} />
+        <IconButton
+          icon="copy"
+          label={empty ? "Copiar texto (nota vazia)" : "Copiar texto (Ctrl+Shift+C)"}
+          disabled={empty}
+          onClick={onCopy}
+        />
+        <IconButton
+          icon="markdown"
+          label={
+            empty ? "Copiar como Markdown (nota vazia)" : "Copiar como Markdown (Ctrl+Shift+M)"
+          }
+          disabled={empty}
+          onClick={onCopyMarkdown}
+        />
         <IconButton icon="plus" label="Nova nota (Ctrl+N)" onClick={onNewNote} />
         <IconButton icon="history" label="Histórico (Ctrl+H)" onClick={onOpenHistory} />
         {/* Disabled until the Settings screen (T52). */}
@@ -112,6 +144,8 @@ export function NoteScreen({
       />
       {warning ? (
         <Toast variant="error" message={warning} onDismiss={onDismissWarning} />
+      ) : notice ? (
+        <Toast message={notice} onDismiss={onDismissNotice} />
       ) : (
         <SaveStatus status={status} />
       )}

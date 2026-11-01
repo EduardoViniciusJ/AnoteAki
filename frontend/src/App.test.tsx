@@ -212,4 +212,40 @@ describe("App", () => {
     expect(root.classList.contains("is-opening")).toBe(true);
     root.remove();
   });
+
+  it('copia título e texto e confirma com "Copiado"', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await renderApp();
+    fireEvent.change(title(), { target: { value: "Compras" } });
+    fireEvent.change(editor(), { target: { value: "leite" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copiar texto (Ctrl+Shift+C)" }));
+    });
+    expect(writeText).toHaveBeenCalledWith("Compras\n\nleite");
+    expect(screen.getByRole("status").textContent).toContain("Copiado");
+  });
+
+  it("copia como Markdown com o título em heading", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await renderApp();
+    fireEvent.change(title(), { target: { value: "Compras" } });
+    fireEvent.change(editor(), { target: { value: "leite" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copiar como Markdown (Ctrl+Shift+M)" }));
+    });
+    expect(writeText).toHaveBeenCalledWith("# Compras\n\nleite");
+  });
+
+  it("avisa quando não consegue copiar", async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await renderApp();
+    fireEvent.change(editor(), { target: { value: "leite" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copiar texto (Ctrl+Shift+C)" }));
+    });
+    expect(screen.getByRole("status").textContent).toContain("Não foi possível copiar");
+  });
 });

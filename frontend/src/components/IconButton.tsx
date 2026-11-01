@@ -8,7 +8,9 @@ export type IconName =
   | "back"
   | "trash"
   | "restore"
-  | "palette";
+  | "palette"
+  | "copy"
+  | "markdown";
 
 // 16×16 stroke icons drawn with paths.
 const PATHS: Record<IconName, string[]> = {
@@ -26,6 +28,9 @@ const PATHS: Record<IconName, string[]> = {
     "M8 2a6 6 0 1 0 0 12c1 0 1.3-.8.9-1.6-.5-.9.1-1.9 1.1-1.9H12a2 2 0 0 0 2-2A6 6 0 0 0 8 2",
     "M5 7.5h.01M7 5h.01M10 5.5h.01",
   ],
+  copy: ["M5.5 5.5h7v8h-7z", "M3.5 10.5v-8h7"],
+  // The Markdown "M" with the download arrow.
+  markdown: ["M2 11V5.5l2.5 3l2.5-3V11", "M11 5v6", "M8.5 8.5l2.5 2.5l2.5-2.5"],
 };
 
 export interface IconButtonProps {

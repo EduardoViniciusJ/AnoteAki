@@ -14,6 +14,8 @@ function renderScreen(props: Partial<NoteScreenProps> = {}) {
     onEscape: vi.fn(),
     onNewNote: vi.fn(),
     onClose: vi.fn(),
+    onCopy: vi.fn(),
+    onCopyMarkdown: vi.fn(),
     onOpenHistory: vi.fn(),
     onTitleSubmit: vi.fn(),
     warning: null,
@@ -105,5 +107,42 @@ describe("NoteScreen", () => {
     expect(screen.getByRole("status").textContent).toContain("Atalho em uso");
     fireEvent.click(screen.getByRole("button", { name: "Fechar aviso" }));
     expect(props.onDismissWarning).toHaveBeenCalledOnce();
+  });
+
+  it("os botões copiar são independentes", () => {
+    const props = renderScreen({ body: "leite" });
+    fireEvent.click(screen.getByRole("button", { name: "Copiar texto (Ctrl+Shift+C)" }));
+    expect(props.onCopy).toHaveBeenCalledOnce();
+    expect(props.onCopyMarkdown).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Copiar como Markdown (Ctrl+Shift+M)" }));
+    expect(props.onCopyMarkdown).toHaveBeenCalledOnce();
+  });
+
+  it("Ctrl+Shift+C copia; Ctrl+C sozinho fica com o texto selecionado", () => {
+    const props = renderScreen({ heading: "Compras" });
+    fireEvent.keyDown(editor(), { key: "c", ctrlKey: true });
+    expect(props.onCopy).not.toHaveBeenCalled();
+    fireEvent.keyDown(editor(), { key: "C", ctrlKey: true, shiftKey: true });
+    expect(props.onCopy).toHaveBeenCalledOnce();
+    fireEvent.keyDown(editor(), { key: "M", ctrlKey: true, shiftKey: true });
+    expect(props.onCopyMarkdown).toHaveBeenCalledOnce();
+  });
+
+  it("nota vazia não copia", () => {
+    const props = renderScreen({ heading: " ", body: "\n" });
+    for (const name of ["Copiar texto (nota vazia)", "Copiar como Markdown (nota vazia)"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button.getAttribute("aria-disabled")).toBe("true");
+      fireEvent.click(button);
+    }
+    fireEvent.keyDown(editor(), { key: "C", ctrlKey: true, shiftKey: true });
+    fireEvent.keyDown(editor(), { key: "M", ctrlKey: true, shiftKey: true });
+    expect(props.onCopy).not.toHaveBeenCalled();
+    expect(props.onCopyMarkdown).not.toHaveBeenCalled();
+  });
+
+  it("mostra a confirmação", () => {
+    renderScreen({ body: "x", notice: "Copiado" });
+    expect(screen.getByRole("status").textContent).toContain("Copiado");
   });
 });
