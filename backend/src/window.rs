@@ -5,7 +5,7 @@ use std::sync::Mutex;
 
 use serde::Serialize;
 use tauri::{
-    AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Runtime, WebviewUrl,
+    AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, PhysicalSize, Runtime, WebviewUrl,
     WebviewWindow, WebviewWindowBuilder,
 };
 
@@ -19,7 +19,8 @@ pub const LABEL_PREFIX: &str = "note-";
 pub const COLOR_ROTATION: [&str; 4] = ["yellow", "pink", "blue", "green"];
 const WIDTH: f64 = 360.0;
 const HEIGHT: f64 = 320.0;
-const MIN_WIDTH: f64 = 280.0;
+/// Below the "small" preset (260×220), so every preset fits.
+const MIN_WIDTH: f64 = 240.0;
 const MIN_HEIGHT: f64 = 200.0;
 /// Offset of a new sticky note from the one that opened it, in logical pixels.
 const CASCADE: f64 = 32.0;
@@ -38,6 +39,17 @@ struct WindowShown {
     reason: ShowReason,
 }
 
+/// Payload of the `move-mode` event, broadcast to every sticky note.
+#[derive(Clone, Serialize)]
+struct MoveMode {
+    on: bool,
+}
+
+/// Puts every open sticky note in (or out of) move mode, together.
+pub fn broadcast_move_mode(app: &AppHandle, on: bool) -> tauri::Result<()> {
+    app.emit("move-mode", MoveMode { on })
+}
+
 /// What a sticky note window shows. Returned by `get_window_state`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -46,6 +58,8 @@ pub struct WindowState {
     pub note_id: Option<i64>,
     pub color: String,
     pub opacity: i64,
+    /// Pinned (the default) = stays on screen when focus leaves the app.
+    pub pinned: bool,
 }
 
 impl From<&Note> for WindowState {
@@ -57,6 +71,7 @@ impl From<&Note> for WindowState {
                 .clone()
                 .unwrap_or_else(|| COLOR_ROTATION[0].to_owned()),
             opacity: note.opacity,
+            pinned: true,
         }
     }
 }
@@ -103,6 +118,33 @@ impl Windows {
                 r.stack.push(label.to_owned());
             }
         })
+    }
+
+    /// Shows `note` in a window, keeping its pinned choice.
+    pub fn set_note(&self, label: &str, note: &Note) -> Result<(), AppError> {
+        let pinned = self.is_pinned(label)?;
+        self.set(
+            label,
+            WindowState {
+                pinned,
+                ..WindowState::from(note)
+            },
+        )
+    }
+
+    /// Unknown windows count as pinned, the default.
+    pub fn is_pinned(&self, label: &str) -> Result<bool, AppError> {
+        self.with(|r| r.slots.get(label).is_none_or(|slot| slot.pinned))
+    }
+
+    pub fn set_pinned(&self, label: &str, pinned: bool) -> Result<(), AppError> {
+        self.with(|r| match r.slots.get_mut(label) {
+            Some(slot) => {
+                slot.pinned = pinned;
+                Ok(())
+            }
+            None => Err(AppError::Internal("Janela desconhecida.")),
+        })?
     }
 
     pub fn remove(&self, label: &str) -> Result<(), AppError> {
@@ -275,21 +317,28 @@ pub fn open(
             note_id: None,
             color: windows.next_color()?,
             opacity: 100,
+            pinned: true,
         },
     };
     let window = create(app, windows, label, state, None, near)?;
     if let Some(note) = note {
-        remember(db, &window, note.id)?;
+        remember(db, windows, &window, note.id)?;
     }
     Ok(focus(&window)?)
 }
 
 /// Saves which note a window shows, so it comes back after a restart.
-pub fn remember(db: &Db, window: &WebviewWindow, note_id: i64) -> Result<(), AppError> {
+pub fn remember(
+    db: &Db,
+    windows: &Windows,
+    window: &WebviewWindow,
+    note_id: i64,
+) -> Result<(), AppError> {
     let open = OpenWindow {
         label: window.label().to_owned(),
         note_id,
         bounds: bounds_of(window)?,
+        pinned: windows.is_pinned(window.label())?,
     };
     db.with(|conn| windows::upsert(conn, &open))
 }
@@ -320,14 +369,11 @@ pub fn restore(app: &AppHandle, db: &Db, windows: &Windows) -> Result<(), AppErr
             continue;
         };
         let bounds = on_screen(app, saved.bounds).then_some(saved.bounds);
-        create(
-            app,
-            windows,
-            saved.label,
-            WindowState::from(&note),
-            bounds,
-            None,
-        )?;
+        let state = WindowState {
+            pinned: saved.pinned,
+            ..WindowState::from(&note)
+        };
+        create(app, windows, saved.label, state, bounds, None)?;
     }
     Ok(())
 }
@@ -396,6 +442,97 @@ pub fn hide_all(app: &AppHandle, db: &Db) -> tauri::Result<()> {
         window.hide()?;
     }
     Ok(())
+}
+
+/// Focus left the app: hide only the unpinned sticky notes.
+pub fn hide_unpinned(app: &AppHandle, db: &Db, windows: &Windows) -> Result<(), AppError> {
+    for window in note_windows(app) {
+        if !windows.is_pinned(window.label())? {
+            save_bounds(db, &window);
+            window.hide()?;
+        }
+    }
+    Ok(())
+}
+
+/// Pins or unpins a sticky note and saves the choice (if it has a note).
+pub fn set_pinned(db: &Db, windows: &Windows, label: &str, pinned: bool) -> Result<(), AppError> {
+    windows.set_pinned(label, pinned)?;
+    db.with(|conn| windows::set_pinned(conn, label, pinned))
+}
+
+/// Size presets of a sticky note (PRD §12).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WindowSize {
+    Small,
+    Medium,
+    Large,
+}
+
+impl WindowSize {
+    pub fn parse(value: &str) -> Result<Self, AppError> {
+        match value {
+            "small" => Ok(Self::Small),
+            "medium" => Ok(Self::Medium),
+            "large" => Ok(Self::Large),
+            _ => Err(AppError::InvalidInput("Tamanho de janela inválido.")),
+        }
+    }
+
+    /// Width and height in logical pixels.
+    pub fn logical(self) -> LogicalSize<f64> {
+        match self {
+            Self::Small => LogicalSize::new(260.0, 220.0),
+            Self::Medium => LogicalSize::new(340.0, 320.0),
+            Self::Large => LogicalSize::new(460.0, 520.0),
+        }
+    }
+}
+
+/// Resizes a sticky note to a preset. The top-left corner stays, unless the window
+/// would go past the work area: then it moves back just enough.
+pub fn resize(db: &Db, window: &WebviewWindow, size: WindowSize) -> Result<(), AppError> {
+    let logical = size.logical();
+    let physical: PhysicalSize<u32> = logical.to_physical(window.scale_factor()?);
+    window.set_size(logical)?;
+    let from = window.outer_position()?;
+    let to = match window.current_monitor()? {
+        Some(monitor) => {
+            let area = monitor.work_area();
+            fit(from, physical, area.position, area.size)
+        }
+        None => from,
+    };
+    if to != from {
+        window.set_position(to)?;
+    }
+    let bounds = Bounds {
+        x: to.x,
+        y: to.y,
+        width: physical.width,
+        height: physical.height,
+    };
+    db.with(|conn| windows::update_bounds(conn, window.label(), bounds))
+}
+
+/// Moves a window the minimum needed to stay inside the work area. If it is bigger
+/// than the area, it sticks to the top-left corner.
+pub fn fit(
+    position: PhysicalPosition<i32>,
+    size: PhysicalSize<u32>,
+    area_position: PhysicalPosition<i32>,
+    area_size: PhysicalSize<u32>,
+) -> PhysicalPosition<i32> {
+    let axis = |pos: i32, len: u32, start: i32, area: u32| {
+        let end = i64::from(start) + i64::from(area);
+        let pos = i64::from(pos).min(end - i64::from(len));
+        let pos = pos.max(i64::from(start));
+        i32::try_from(pos).unwrap_or(start)
+    };
+    PhysicalPosition::new(
+        axis(position.x, size.width, area_position.x, area_size.width),
+        axis(position.y, size.height, area_position.y, area_size.height),
+    )
 }
 
 /// Closes one sticky note for good. Its note stays in the history.
@@ -534,6 +671,7 @@ mod tests {
             note_id: Some(5),
             color: "pink".to_owned(),
             opacity: 85,
+            pinned: true,
         };
         windows.set("note-1", state.clone()).unwrap();
         assert_eq!(windows.label_of(5).unwrap().as_deref(), Some("note-1"));
@@ -549,6 +687,7 @@ mod tests {
             note_id: None,
             color: "yellow".to_owned(),
             opacity: 100,
+            pinned: true,
         };
         for label in ["note-1", "note-2", "note-3"] {
             windows.set(label, state.clone()).unwrap();
@@ -569,8 +708,102 @@ mod tests {
             note_id: None,
             color: "blue".to_owned(),
             opacity: 70,
+            pinned: false,
         })
         .unwrap();
-        assert_eq!(json, r#"{"noteId":null,"color":"blue","opacity":70}"#);
+        assert_eq!(
+            json,
+            r#"{"noteId":null,"color":"blue","opacity":70,"pinned":false}"#
+        );
+    }
+
+    #[test]
+    fn windows_start_pinned_and_keep_it_when_the_note_changes() {
+        let windows = Windows::default();
+        // Unknown windows count as pinned.
+        assert!(windows.is_pinned("note-1").unwrap());
+        let state = WindowState {
+            note_id: None,
+            color: "yellow".to_owned(),
+            opacity: 100,
+            pinned: true,
+        };
+        windows.set("note-1", state).unwrap();
+        windows.set_pinned("note-1", false).unwrap();
+        assert!(!windows.is_pinned("note-1").unwrap());
+        assert!(windows.set_pinned("note-9", false).is_err());
+        // Saving the note (pinned in the history, a different flag) keeps the window unpinned.
+        let note = Note {
+            id: 3,
+            title: String::new(),
+            heading: String::new(),
+            body: "a".to_owned(),
+            color: None,
+            opacity: 100,
+            pinned: true,
+            created_at: String::new(),
+            updated_at: String::new(),
+            deleted_at: None,
+        };
+        windows.set_note("note-1", &note).unwrap();
+        let state = windows.state("note-1").unwrap().unwrap();
+        assert_eq!((state.note_id, state.pinned), (Some(3), false));
+    }
+
+    #[test]
+    fn size_presets_follow_the_contract() {
+        let sizes: Vec<_> = ["small", "medium", "large"]
+            .into_iter()
+            .map(|s| WindowSize::parse(s).unwrap().logical())
+            .map(|s| (s.width, s.height))
+            .collect();
+        assert_eq!(sizes, [(260.0, 220.0), (340.0, 320.0), (460.0, 520.0)]);
+        for bad in ["", "Small", "huge", "medium "] {
+            assert_eq!(WindowSize::parse(bad).unwrap_err().code(), "INVALID_INPUT");
+        }
+    }
+
+    #[test]
+    fn fit_keeps_the_corner_when_the_window_fits() {
+        let pos = fit(
+            PhysicalPosition::new(100, 200),
+            PhysicalSize::new(460, 520),
+            PhysicalPosition::new(0, 0),
+            PhysicalSize::new(1920, 1040),
+        );
+        assert_eq!(pos, PhysicalPosition::new(100, 200));
+    }
+
+    #[test]
+    fn fit_moves_back_only_what_is_needed() {
+        let pos = fit(
+            PhysicalPosition::new(1700, 900),
+            PhysicalSize::new(460, 520),
+            PhysicalPosition::new(0, 0),
+            PhysicalSize::new(1920, 1040),
+        );
+        assert_eq!(pos, PhysicalPosition::new(1460, 520));
+    }
+
+    #[test]
+    fn fit_on_a_monitor_with_negative_coordinates() {
+        let pos = fit(
+            PhysicalPosition::new(-2600, -10),
+            PhysicalSize::new(400, 300),
+            PhysicalPosition::new(-2560, 0),
+            PhysicalSize::new(2560, 1400),
+        );
+        assert_eq!(pos, PhysicalPosition::new(-2560, 0));
+    }
+
+    #[test]
+    fn fit_window_bigger_than_area_sticks_to_corner() {
+        let pos = fit(
+            PhysicalPosition::new(50, 50),
+            PhysicalSize::new(900, 900),
+            PhysicalPosition::new(0, 0),
+            PhysicalSize::new(800, 600),
+        );
+        assert_eq!(pos, PhysicalPosition::new(0, 0));
     }
 }

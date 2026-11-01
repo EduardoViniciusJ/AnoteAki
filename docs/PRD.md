@@ -267,11 +267,13 @@ interface AppError { code: ErrorCode; message: string } // message NUNCA contém
 | `set_window_pinned` | `{ pinned: boolean }` | `void` | Fixa/desafixa o post-it que chamou. Desafixado, ele some quando o foco sai do app (se `hideOnBlur`); fixado (padrão), fica na tela. Persistido em `open_windows`. |
 | `set_window_size` | `{ size: WindowSize }` | `void` | Redimensiona o post-it que chamou para o preset, mantendo o canto superior esquerdo (reposiciona o mínimo necessário para caber no monitor). O tamanho continua salvo em `open_windows` como hoje. Valor desconhecido → `INVALID_INPUT`. |
 | `open_link` | `{ url: string }` | `void` | Abre a URL no navegador padrão. Só `http`/`https` após parse e ≤ 2048 caracteres; qualquer outro esquema ou texto → `INVALID_INPUT`. |
+| `set_move_mode` | `{ on: boolean }` | `void` | Modo mover compartilhado (`Ctrl+M`): reemite o evento `move-mode` para **todas** as janelas, que entram ou saem do modo juntas. |
 
 ### Eventos (Rust → UI)
 | Evento | Payload | Quando |
 |---|---|---|
 | `window-shown` | `{ reason: "shortcut" \| "tray" \| "second-instance" }` | Só para o post-it que recebeu o foco, logo depois de `show()` + `set_focus()`. A UI foca o título (post-it vazio) ou o fim do texto. |
+| `move-mode` | `{ on: boolean }` | Para todas as janelas, quando qualquer post-it alterna o modo mover (`set_move_mode`). |
 
 Não há evento de falha do atalho na inicialização: um evento emitido antes de o `listen()` do JS ser registrado é descartado (condição de corrida observada no T11). Por isso o estado é consultado com `get_shortcut_status`.
 

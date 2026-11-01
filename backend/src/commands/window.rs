@@ -7,7 +7,7 @@ use crate::db::Db;
 use crate::db::notes;
 use crate::error::AppError;
 use crate::shortcut::{CurrentShortcut, ShortcutStatus};
-use crate::window::{self, WindowState, Windows};
+use crate::window::{self, WindowSize, WindowState, Windows};
 
 /// Hides every sticky note (used by `Esc`).
 #[tauri::command]
@@ -49,6 +49,33 @@ pub async fn open_note_window(
         None => None,
     };
     window::open(&app, &db, &windows, note.as_ref(), Some(&window))
+}
+
+/// Pins the calling sticky note on screen (or unpins it, so it hides on blur).
+#[tauri::command]
+pub async fn set_window_pinned(
+    window: WebviewWindow,
+    db: State<'_, Db>,
+    windows: State<'_, Windows>,
+    pinned: bool,
+) -> Result<(), AppError> {
+    window::set_pinned(&db, &windows, window.label(), pinned)
+}
+
+/// Resizes the calling sticky note to a preset: "small", "medium" or "large".
+#[tauri::command]
+pub async fn set_window_size(
+    window: WebviewWindow,
+    db: State<'_, Db>,
+    size: String,
+) -> Result<(), AppError> {
+    window::resize(&db, &window, WindowSize::parse(&size)?)
+}
+
+/// Turns move mode on or off in every open sticky note at once (Ctrl+M).
+#[tauri::command]
+pub async fn set_move_mode(app: AppHandle, on: bool) -> Result<(), AppError> {
+    window::broadcast_move_mode(&app, on).map_err(AppError::from)
 }
 
 /// Closes the calling sticky note. Its note stays in the history.

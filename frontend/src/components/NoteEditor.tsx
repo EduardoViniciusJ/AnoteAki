@@ -1,5 +1,6 @@
-import type { KeyboardEvent, Ref } from "react";
+import type { KeyboardEvent, MouseEvent, Ref } from "react";
 import { duplicateLine, type LineEdit, moveLine } from "../lib/lines";
+import { findLinkAt } from "../lib/links";
 import "./NoteEditor.css";
 
 export interface NoteEditorProps {
@@ -7,6 +8,8 @@ export interface NoteEditorProps {
   onChange: (value: string) => void;
   placeholder?: string;
   readOnly?: boolean;
+  /** Ctrl+click on an http(s) link in the text. */
+  onOpenLink?: (url: string) => void;
   ref?: Ref<HTMLTextAreaElement>;
 }
 
@@ -15,6 +18,7 @@ export function NoteEditor({
   onChange,
   placeholder,
   readOnly = false,
+  onOpenLink,
   ref,
 }: NoteEditorProps) {
   // The DOM value and the caret are set right away: waiting for the React
@@ -45,6 +49,17 @@ export function NoteEditor({
     }
   };
 
+  // The click already put the caret where the mouse is: the link is the one around it.
+  const onClick = (event: MouseEvent<HTMLTextAreaElement>) => {
+    if (!event.ctrlKey || !onOpenLink) return;
+    const editor = event.currentTarget;
+    const url = findLinkAt(editor.value, editor.selectionStart);
+    if (url) {
+      event.preventDefault();
+      onOpenLink(url);
+    }
+  };
+
   return (
     <textarea
       ref={ref}
@@ -56,6 +71,7 @@ export function NoteEditor({
       readOnly={readOnly}
       onChange={(event) => onChange(event.target.value)}
       onKeyDown={onKeyDown}
+      onClick={onClick}
     />
   );
 }

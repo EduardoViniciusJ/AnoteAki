@@ -11,7 +11,8 @@ export type IconName =
   | "palette"
   | "copy"
   | "pin"
-  | "markdown";
+  | "markdown"
+  | "resize";
 
 // 16×16 stroke icons drawn with paths.
 const PATHS: Record<IconName, string[]> = {
@@ -33,6 +34,8 @@ const PATHS: Record<IconName, string[]> = {
   pin: ["M6 2h4", "M6.5 2v4L4.5 8.5h7L9.5 6V2", "M8 8.5V14"],
   // The Markdown "M" with the download arrow.
   markdown: ["M2 11V5.5l2.5 3l2.5-3V11", "M11 5v6", "M8.5 8.5l2.5 2.5l2.5-2.5"],
+  // Two corners pulled apart along the diagonal.
+  resize: ["M9.5 2.5h4v4", "M13.5 2.5L9 7", "M6.5 13.5h-4v-4", "M2.5 13.5L7 9"],
 };
 
 export interface IconButtonProps {
@@ -42,10 +45,19 @@ export interface IconButtonProps {
   disabled?: boolean;
   /** `-1` removes the button from Tab order when a keyboard shortcut does the same (e.g. Delete in the list). */
   tabIndex?: number;
+  /** Toggle buttons (e.g. pin): sets `aria-pressed` and the pressed style. */
+  pressed?: boolean;
   onClick?: () => void;
 }
 
-export function IconButton({ icon, label, disabled = false, tabIndex, onClick }: IconButtonProps) {
+export function IconButton({
+  icon,
+  label,
+  disabled = false,
+  tabIndex,
+  pressed,
+  onClick,
+}: IconButtonProps) {
   return (
     <button
       type="button"
@@ -54,6 +66,7 @@ export function IconButton({ icon, label, disabled = false, tabIndex, onClick }:
       title={label}
       // aria-disabled (not `disabled`) keeps the button in Tab order, with the reason in the tooltip.
       aria-disabled={disabled}
+      aria-pressed={pressed}
       tabIndex={tabIndex}
       onClick={() => {
         if (!disabled) onClick?.();

@@ -3,9 +3,11 @@ import { ColorMenu } from "../components/ColorMenu";
 import { IconButton } from "../components/IconButton";
 import { NoteEditor } from "../components/NoteEditor";
 import { SaveStatus } from "../components/SaveStatus";
+import { SizeMenu } from "../components/SizeMenu";
 import { TitleField } from "../components/TitleField";
 import { Toast } from "../components/Toast";
 import { WordCount } from "../components/WordCount";
+import type { WindowSize } from "../lib/api";
 import { useFocusMode } from "../lib/useFocusMode";
 import type { Look, SaveStatus as Status } from "../lib/useNoteDraft";
 import "./NoteScreen.css";
@@ -46,6 +48,15 @@ export interface NoteScreenProps {
   /** Short confirmation, e.g. "Copiado". */
   notice?: string | null;
   onDismissNotice?: () => void;
+  /** Pinned (default) = stays on screen when focus leaves the app. */
+  pinned?: boolean;
+  onPinnedChange?: (pinned: boolean) => void;
+  onSizeChange?: (size: WindowSize) => void;
+  /** Move mode is shared: Ctrl+M asks the app and every sticky note follows. */
+  moving?: boolean;
+  onMovingChange?: (on: boolean) => void;
+  /** Ctrl+click on a link in the text. */
+  onOpenLink?: (url: string) => void;
   titleRef?: Ref<HTMLInputElement>;
   editorRef?: Ref<HTMLTextAreaElement>;
 }
@@ -75,6 +86,12 @@ export function NoteScreen({
   warningAction,
   notice = null,
   onDismissNotice = () => {},
+  pinned = true,
+  onPinnedChange = () => {},
+  onSizeChange = () => {},
+  moving = false,
+  onMovingChange = () => {},
+  onOpenLink,
   titleRef,
   editorRef,
 }: NoteScreenProps) {
@@ -94,13 +111,17 @@ export function NoteScreen({
         const ctrl = event.ctrlKey && !event.altKey;
         if (event.key === "Escape") {
           event.preventDefault();
-          onEscape();
+          if (moving) onMovingChange(false);
+          else onEscape();
         } else if (ctrl && event.shiftKey && key === "c") {
           event.preventDefault();
           if (!empty) onCopy();
         } else if (ctrl && event.shiftKey && key === "m") {
           event.preventDefault();
           if (!empty) onCopyMarkdown();
+        } else if (ctrl && key === "m") {
+          event.preventDefault();
+          onMovingChange(!moving);
         } else if (ctrl && key === "n") {
           event.preventDefault();
           onNewNote();
@@ -116,6 +137,11 @@ export function NoteScreen({
         }
       }}
     >
+      {moving && (
+        <div className="note-screen__move" data-tauri-drag-region="">
+          <span className="note-screen__move-hint">Arraste para mover · Esc ou Ctrl+M sai</span>
+        </div>
+      )}
       <header className={`note-screen__toolbar${fade}`} data-tauri-drag-region="">
         {readOnly && (
           <span className="note-screen__trash">
@@ -125,7 +151,16 @@ export function NoteScreen({
             </button>
           </span>
         )}
+        <IconButton
+          icon="pin"
+          label={
+            pinned ? "Fixado na tela (clique para desafixar)" : "Desafixado: some ao clicar fora"
+          }
+          pressed={pinned}
+          onClick={() => onPinnedChange(!pinned)}
+        />
         <ColorMenu look={look} onChange={onLookChange} disabled={readOnly} />
+        <SizeMenu onChange={onSizeChange} />
         <IconButton
           icon="copy"
           label={empty ? "Copiar texto (nota vazia)" : "Copiar texto (Ctrl+Shift+C)"}
@@ -161,6 +196,7 @@ export function NoteScreen({
         }}
         placeholder="Escreva algo…"
         readOnly={readOnly}
+        onOpenLink={onOpenLink}
       />
       {warning ? (
         <Toast

@@ -1,6 +1,7 @@
 mod commands;
 mod db;
 mod error;
+mod link;
 mod settings;
 mod shortcut;
 mod tray;
@@ -41,6 +42,13 @@ pub fn run() -> tauri::Result<()> {
             }
         }))
         .plugin(shortcut::plugin())
+        // Rust-side only: JS gets no opener permission and goes through `open_link`.
+        // No click script in the page either (it would call the plugin from JS).
+        .plugin(
+            tauri_plugin_opener::Builder::new()
+                .open_js_links_on_click(false)
+                .build(),
+        )
         .setup(|app| {
             let db = Db::new(open_database(app.handle()));
             // Without a database the defaults apply.
@@ -87,6 +95,10 @@ pub fn run() -> tauri::Result<()> {
             commands::window::get_window_state,
             commands::window::open_note_window,
             commands::window::close_note_window,
+            commands::window::set_window_pinned,
+            commands::window::set_window_size,
+            commands::window::set_move_mode,
+            commands::links::open_link,
             commands::notes::get_last_note,
             commands::notes::get_note,
             commands::notes::save_note,

@@ -18,11 +18,14 @@ pub struct OpenWindow {
     pub label: String,
     pub note_id: i64,
     pub bounds: Bounds,
+    /// Pinned windows stay on screen when focus leaves the app.
+    pub pinned: bool,
 }
 
 pub fn list(conn: &Connection) -> Result<Vec<OpenWindow>, AppError> {
     let mut stmt = conn.prepare(
-        "SELECT label, note_id, x, y, width, height FROM open_windows ORDER BY stack, rowid",
+        "SELECT label, note_id, x, y, width, height, pinned FROM open_windows \
+         ORDER BY stack, rowid",
     )?;
     let rows = stmt.query_map([], |row| {
         Ok(OpenWindow {
@@ -34,6 +37,7 @@ pub fn list(conn: &Connection) -> Result<Vec<OpenWindow>, AppError> {
                 width: row.get(4)?,
                 height: row.get(5)?,
             },
+            pinned: row.get(6)?,
         })
     })?;
     Ok(rows.collect::<Result<_, _>>()?)
@@ -53,10 +57,29 @@ pub fn upsert(conn: &Connection, window: &OpenWindow) -> Result<(), AppError> {
     )?;
     conn.execute(
         // A new window goes on top of the stack; an existing one keeps its place.
-        "INSERT INTO open_windows (label, note_id, x, y, width, height, stack) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, (SELECT COALESCE(MAX(stack), 0) + 1 FROM open_windows)) \
-         ON CONFLICT(label) DO UPDATE SET note_id = ?2, x = ?3, y = ?4, width = ?5, height = ?6",
-        params![window.label, window.note_id, x, y, width, height],
+        "INSERT INTO open_windows (label, note_id, x, y, width, height, pinned, stack) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, \
+                 (SELECT COALESCE(MAX(stack), 0) + 1 FROM open_windows)) \
+         ON CONFLICT(label) DO UPDATE SET \
+           note_id = ?2, x = ?3, y = ?4, width = ?5, height = ?6, pinned = ?7",
+        params![
+            window.label,
+            window.note_id,
+            x,
+            y,
+            width,
+            height,
+            window.pinned
+        ],
+    )?;
+    Ok(())
+}
+
+/// Pins or unpins a window; does nothing for windows without a saved note.
+pub fn set_pinned(conn: &Connection, label: &str, pinned: bool) -> Result<(), AppError> {
+    conn.execute(
+        "UPDATE open_windows SET pinned = ?2 WHERE label = ?1",
+        params![label, pinned],
     )?;
     Ok(())
 }
@@ -115,6 +138,7 @@ mod tests {
             label: label.to_owned(),
             note_id,
             bounds: BOUNDS,
+            pinned: true,
         }
     }
 
@@ -157,6 +181,37 @@ mod tests {
         upsert(&conn, &window("note-2", b)).unwrap();
         let labels: Vec<_> = list(&conn).unwrap().into_iter().map(|w| w.label).collect();
         assert_eq!(labels, ["note-2", "note-3", "note-1"]);
+    }
+
+    #[test]
+    fn windows_keep_the_pinned_choice() {
+        let conn = open_in_memory();
+        let (a, b) = (note(&conn), note(&conn));
+        upsert(&conn, &window("note-1", a)).unwrap();
+        let unpinned = OpenWindow {
+            pinned: false,
+            ..window("note-2", b)
+        };
+        upsert(&conn, &unpinned).unwrap();
+        set_pinned(&conn, "note-1", false).unwrap();
+        set_pinned(&conn, "note-2", true).unwrap();
+        // A blank window has no row: nothing to update.
+        set_pinned(&conn, "note-9", false).unwrap();
+        let pinned: Vec<_> = list(&conn).unwrap().into_iter().map(|w| w.pinned).collect();
+        assert_eq!(pinned, [false, true]);
+    }
+
+    #[test]
+    fn rows_from_before_v5_start_pinned() {
+        let conn = open_in_memory();
+        let a = note(&conn);
+        conn.execute(
+            "INSERT INTO open_windows (label, note_id, x, y, width, height) \
+             VALUES ('note-1', ?1, 0, 0, 360, 320)",
+            [a],
+        )
+        .unwrap();
+        assert!(list(&conn).unwrap()[0].pinned);
     }
 
     #[test]

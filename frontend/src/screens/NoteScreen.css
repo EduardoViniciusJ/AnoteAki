@@ -1,7 +1,27 @@
 .note-screen {
   display: flex;
+  position: relative;
   flex-direction: column;
   height: 100%;
+}
+
+/* Move mode (Ctrl+M): everything under the overlay drags the window. */
+.note-screen__move {
+  display: grid;
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  place-items: center;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.note-screen__move-hint {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--ink);
+  color: var(--sticker);
+  font-size: var(--text-xs);
+  pointer-events: none;
 }
 
 .note-screen__toolbar {

@@ -7,10 +7,15 @@ import {
   getShortcutStatus,
   getWindowState,
   hideWindow,
+  onMoveMode,
   onWindowShown,
+  openLink,
   openNoteWindow,
   restoreNote,
   type Settings,
+  setMoveMode,
+  setWindowPinned,
+  setWindowSize,
 } from "./lib/api";
 import { copyText } from "./lib/clipboard";
 import { noteAsMarkdown, noteAsText } from "./lib/text";
@@ -42,6 +47,9 @@ export function App() {
   const [shortcutWarning, setShortcutWarning] = useState<string | null>(null);
   const [focusMode, setFocusMode] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // Every sticky note starts pinned; the real value comes from get_window_state.
+  const [pinned, setPinned] = useState(true);
+  const [moving, setMoving] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   // Read inside callbacks that must not re-subscribe on every keystroke.
@@ -71,6 +79,7 @@ export function App() {
       .then(async (state) => {
         const note = state.noteId === null ? null : await getNote(state.noteId);
         if (!active) return;
+        setPinned(state.pinned);
         replace(note, { color: state.color, opacity: state.opacity });
         focusNote(note && (note.heading || note.body) ? "body" : "title");
       })
@@ -115,6 +124,14 @@ export function App() {
       unlisten.then((stop) => stop()).catch(() => {});
     };
   }, [focusNote]);
+
+  // Move mode is shared: any sticky note's Ctrl+M switches all of them.
+  useEffect(() => {
+    const unlisten = onMoveMode(({ on }) => setMoving(on));
+    return () => {
+      unlisten.then((stop) => stop()).catch(() => {});
+    };
+  }, []);
 
   // Query (not an event): an event emitted before listen() would be lost.
   useEffect(() => {
@@ -243,6 +260,25 @@ export function App() {
         if (warning === null) setShortcutWarning(null);
         else setWarning(null);
         focusNote();
+      }}
+      pinned={pinned}
+      onPinnedChange={(next) => {
+        setPinned(next);
+        setWindowPinned(next).catch(() => {
+          setPinned(!next);
+          setWarning("Não foi possível fixar ou desafixar o post-it.");
+        });
+      }}
+      onSizeChange={(size) => {
+        setWindowSize(size).catch(() => setWarning("Não foi possível mudar o tamanho."));
+      }}
+      moving={moving}
+      onMovingChange={(on) => {
+        // If the broadcast fails, at least this sticky note switches.
+        setMoveMode(on).catch(() => setMoving(on));
+      }}
+      onOpenLink={(url) => {
+        openLink(url).catch(() => setWarning("Não foi possível abrir o link."));
       }}
       titleRef={titleRef}
       editorRef={editorRef}

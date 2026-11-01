@@ -29,6 +29,9 @@ tauri-plugin-global-shortcut = "2.4.1"
 rusqlite = { version = "0.41.1", default-features = false, features = ["bundled"] }
 # A second launch only shows the running app instead of starting another one (T41).
 tauri-plugin-single-instance = "2.5.5"
+# Opens Ctrl+clicked links in the default browser. Used from Rust only (after
+# `open_link` validates the URL); JS gets no opener permission.
+tauri-plugin-opener = "2.7.2"
 
 [target.'cfg(windows)'.dependencies]
 # Turns off the WebView2 browser keys (Ctrl+F find bar, Ctrl+P, F5...).

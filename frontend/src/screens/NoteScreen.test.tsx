@@ -33,6 +33,15 @@ const title = () => screen.getByLabelText("Título da nota");
 afterEach(cleanup);
 
 describe("NoteScreen", () => {
+  it("botão de fixar mostra o estado e alterna", () => {
+    const onPinnedChange = vi.fn();
+    renderScreen({ pinned: false, onPinnedChange });
+    const pin = screen.getByRole("button", { name: "Desafixado: some ao clicar fora" });
+    expect(pin.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(pin);
+    expect(onPinnedChange).toHaveBeenCalledWith(true);
+  });
+
   it("repassa o texto e o título digitados", () => {
     const props = renderScreen();
     fireEvent.change(editor(), { target: { value: "oi" } });
@@ -159,6 +168,38 @@ describe("NoteScreen", () => {
     renderScreen({ warning: "Atalho em uso", warningAction: { label: "Configurações", onClick } });
     fireEvent.click(screen.getByRole("button", { name: "Configurações" }));
     expect(onClick).toHaveBeenCalled();
+  });
+
+  describe("modo mover", () => {
+    const hint = () => screen.queryByText(/Arraste para mover/);
+
+    it("Ctrl+M pede o modo mover (todas as janelas seguem juntas)", () => {
+      const onMovingChange = vi.fn();
+      renderScreen({ onMovingChange });
+      fireEvent.keyDown(editor(), { key: "m", ctrlKey: true });
+      expect(onMovingChange).toHaveBeenCalledWith(true);
+      onMovingChange.mockClear();
+      cleanup();
+      renderScreen({ moving: true, onMovingChange });
+      fireEvent.keyDown(editor(), { key: "m", ctrlKey: true });
+      expect(onMovingChange).toHaveBeenCalledWith(false);
+    });
+
+    it("ligado: mostra a dica; Esc sai sem esconder a nota", () => {
+      const onMovingChange = vi.fn();
+      const props = renderScreen({ moving: true, onMovingChange });
+      expect(hint()).toBeTruthy();
+      fireEvent.keyDown(editor(), { key: "Escape" });
+      expect(onMovingChange).toHaveBeenCalledWith(false);
+      expect(props.onEscape).not.toHaveBeenCalled();
+    });
+
+    it("Ctrl+Shift+M continua copiando como Markdown", () => {
+      const props = renderScreen({ body: "texto" });
+      fireEvent.keyDown(editor(), { key: "m", ctrlKey: true, shiftKey: true });
+      expect(props.onCopyMarkdown).toHaveBeenCalled();
+      expect(hint()).toBeNull();
+    });
   });
 
   describe("modo foco", () => {
