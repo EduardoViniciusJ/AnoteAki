@@ -412,4 +412,18 @@ describe("HistoryScreen", () => {
     fireEvent.keyDown(item("Alfa"), { key: "Escape" });
     expect(screen.queryByRole("note", { name: "Prévia" })).toBeNull();
   });
+
+  it("apagar a nota em foco fecha a prévia junto", async () => {
+    vi.useFakeTimers();
+    await renderScreen();
+    fireEvent.keyDown(search(), { key: "ArrowDown" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(PREVIEW_DELAY_MS);
+    });
+    expect(screen.getByRole("note", { name: "Prévia" })).not.toBeNull();
+    await act(async () => {
+      fireEvent.keyDown(item("Alfa"), { key: "Delete" });
+    });
+    expect(screen.queryByRole("note", { name: "Prévia" })).toBeNull();
+  });
 });

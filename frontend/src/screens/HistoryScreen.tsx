@@ -224,6 +224,14 @@ export function HistoryScreen({ onBack, onOpenNote, onNoteTrashed }: HistoryScre
     };
   }, []);
 
+  // Deleting or restoring the hovered note unmounts its row without a
+  // mouseleave/blur, so the preview would stay on screen orphaned.
+  useEffect(() => {
+    if (preview && !items.some((note) => note.id === preview.noteId)) {
+      setPreview(null);
+    }
+  }, [items, preview]);
+
   useEffect(() => {
     if (notice?.kind !== "undo" && notice?.kind !== "info") return;
     const timeout = notice.kind === "undo" ? UNDO_TIMEOUT_MS : INFO_TIMEOUT_MS;
