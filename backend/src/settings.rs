@@ -52,8 +52,8 @@ pub fn apply(app: &AppHandle, change: Change) -> Result<Settings, AppError> {
     db.with(|conn| settings::load(conn))
 }
 
-/// A sticky note lost focus: with `hideOnBlur`, hide them all, unless focus
-/// went to another sticky note.
+/// A sticky note lost focus: with `hideOnBlur`, hide the unpinned ones, unless
+/// focus went to another sticky note. Pinned ones (the default) stay on screen.
 pub fn on_blur(app: &AppHandle) {
     if !app.state::<HideOnBlur>().get() {
         return;
@@ -65,7 +65,8 @@ pub fn on_blur(app: &AppHandle) {
         if visible
             && !focused
             && app.state::<HideOnBlur>().get()
-            && window::hide_all(&app, &app.state::<Db>()).is_err()
+            && window::hide_unpinned(&app, &app.state::<Db>(), &app.state::<window::Windows>())
+                .is_err()
         {
             eprintln!("AnoteAki: não foi possível esconder as janelas.");
         }

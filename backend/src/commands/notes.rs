@@ -6,7 +6,7 @@ use tauri::{AppHandle, Manager, State, WebviewWindow};
 use crate::db::notes::{self, Note, NoteSummary, SaveInput, Scope};
 use crate::db::{Db, windows as open_windows};
 use crate::error::AppError;
-use crate::window::{self, WindowState, Windows};
+use crate::window::{self, Windows};
 
 #[tauri::command]
 pub async fn get_last_note(db: State<'_, Db>) -> Result<Option<Note>, AppError> {
@@ -41,9 +41,9 @@ pub async fn save_note(
     };
     let note = db.with(|conn| notes::save(conn, input))?;
     if window::is_note_window(window.label()) {
-        windows.set(window.label(), WindowState::from(&note))?;
+        windows.set_note(window.label(), &note)?;
         if id.is_none() {
-            window::remember(&db, &window, note.id)?;
+            window::remember(&db, &windows, &window, note.id)?;
         }
     }
     Ok(note)
