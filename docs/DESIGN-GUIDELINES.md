@@ -104,7 +104,7 @@ Teclado: sempre use `:focus-visible`; a ordem de Tab segue a leitura; a lista do
 ## Animações
 | Momento | Duração | Efeito | Com `prefers-reduced-motion: reduce` |
 |---|---|---|---|
-| Abrir janela | 120ms `ease-out` | opacidade 0→1 + escala 0.98→1 | só opacidade, 0ms |
+| Abrir janela | 240ms `cubic-bezier(0.2, 0.8, 0.2, 1)` | opacidade 0→1 + subir 10px + escala 0.96→1 | só opacidade, 0ms |
 | Esconder janela | 80ms `ease-in` | opacidade 1→0 | nenhuma |
 | Trocar de tela | 120ms | crossfade | nenhuma |
 | Toast | 150ms | deslizar 8px + fade | só fade |
