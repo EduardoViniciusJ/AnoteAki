@@ -10,9 +10,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/EduardoViniciusJ/AnoteAki/actions/workflows/ci.yml"><img src="https://github.com/EduardoViniciusJ/AnoteAki/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
-  <img src="https://img.shields.io/badge/platform-Windows%2011-0078D4" alt="Platform: Windows 11" />
-  <img src="https://img.shields.io/badge/status-in%20development-E6B800" alt="Status: in development" />
 </p>
 
 <p align="center">
